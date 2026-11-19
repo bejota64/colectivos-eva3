@@ -1,0 +1,4 @@
+# El Scrum Master revisa y aprueba todos los cambios que entran a main.
+# La regla «Proteger main» exige su aprobacion (Require review from Code Owners).
+# Si su usuario de GitHub cambia, actualizar esta linea.
+* @benjaminvillablanca594-cmyk

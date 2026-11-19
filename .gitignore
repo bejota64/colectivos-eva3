@@ -1,0 +1,32 @@
+# Dependencias y archivos generados
+node_modules/
+dist/
+build/
+coverage/
+
+# Secretos: NUNCA se suben. Solo se suben los .env.ejemplo
+.env
+.env.*
+!.env.ejemplo
+
+# Respaldos de las bases en el servidor (contienen datos)
+despliegue/respaldos/
+
+# Resultados locales de pruebas (las evidencias van en pruebas/resultados/)
+*.log
+cookies.txt
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Resultados de las pruebas de la web (Playwright)
+web/test-results/
+web/playwright-report/
+
+# Herramientas del catalogo: datos descargados (grafo de OSM, planilla del MTT)
+herramientas/catalogo/datos/
+*.xlsx
+__pycache__/
