@@ -1,0 +1,181 @@
+# Integracion continua de la API y las bases de datos (parte de Benjamin Munoz).
+# Levanta PostgreSQL 16 y MongoDB 7 con el mismo docker-compose.yml del
+# equipo y ejecuta: analisis estatico, compilacion, pruebas unitarias, de
+# integracion, de integridad de ambas bases y npm audit. La API se conecta
+# con cuentas de base de permisos minimos. Ademas prueba las herramientas
+# del catalogo de recorridos y revisa que sus datos no traigan datos
+# personales. Si un paso falla, el pull request queda en rojo.
+
+name: API y bases de datos
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    name: Lint, unitarias e integracion
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TZ: America/Santiago
+
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v5
+
+      # Credenciales aleatorias, solo para las bases desechables de esta
+      # corrida. No hay contrasenas escritas en el repositorio.
+      # La API usa las cuentas de permisos minimos (URL_POSTGRES, URL_MONGO);
+      # las cuentas duenas (*_ADMIN) solo las usan las pruebas para limpiar.
+      - name: Generar credenciales de prueba
+        run: |
+          PG=$(openssl rand -hex 24)
+          MG=$(openssl rand -hex 24)
+          PG_API=$(openssl rand -hex 24)
+          MG_API=$(openssl rand -hex 24)
+          JWT=$(openssl rand -hex 32)
+          # Hallazgo V-09: el secreto JWT tambien se enmascara. Antes se
+          # generaba dentro del echo y quedaba visible en el registro publico
+          # de cada ejecucion.
+          for SECRETO in "$PG" "$MG" "$PG_API" "$MG_API" "$JWT"; do echo "::add-mask::$SECRETO"; done
+          {
+            echo "POSTGRES_USUARIO=colectivos_admin"
+            echo "POSTGRES_CONTRASENA=$PG"
+            echo "POSTGRES_API_USUARIO=colectivos_api"
+            echo "POSTGRES_API_CONTRASENA=$PG_API"
+            echo "MONGO_USUARIO=colectivos_admin"
+            echo "MONGO_CONTRASENA=$MG"
+            echo "MONGO_API_USUARIO=colectivos_api"
+            echo "MONGO_API_CONTRASENA=$MG_API"
+            echo "URL_POSTGRES=postgresql://colectivos_api:$PG_API@localhost:5432/colectivos"
+            echo "URL_MONGO=mongodb://colectivos_api:$MG_API@localhost:27017/colectivos?authSource=colectivos"
+            echo "URL_POSTGRES_ADMIN=postgresql://colectivos_admin:$PG@localhost:5432/colectivos"
+            echo "URL_MONGO_ADMIN=mongodb://colectivos_admin:$MG@localhost:27017/?authSource=admin"
+            echo "SECRETO_JWT=$JWT"
+            echo "NODE_ENV=test"
+            echo "PUERTO=3000"
+            echo "LIMITE_GENERAL_POR_MINUTO=100"
+          } >> "$GITHUB_ENV"
+
+      - name: Levantar PostgreSQL y MongoDB con datos de prueba
+        run: docker compose up -d
+
+      # Los healthcheck responden apenas parte el servidor temporal de
+      # inicio, antes de que terminen los scripts de bd/*/inicio. Por eso se
+      # espera el aviso de "init process complete" de cada imagen.
+      - name: Esperar a que terminen los scripts de inicio
+        run: |
+          for _ in $(seq 1 90); do
+            PG=$(docker compose logs postgres | grep -c "init process complete" || true)
+            MG=$(docker compose logs mongo | grep -c "init process complete" || true)
+            if [ "$PG" -ge 1 ] && [ "$MG" -ge 1 ]; then
+              docker compose up -d --wait
+              echo "Bases listas con sus datos de prueba"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Las bases no terminaron de iniciar a tiempo"
+          docker compose logs --no-color --tail=100
+          exit 1
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: api
+        run: npm ci
+
+      - name: Analisis estatico (oxlint)
+        working-directory: api
+        run: npm run lint
+
+      - name: Compilar (TypeScript estricto)
+        id: compilar
+        working-directory: api
+        run: npm run build
+
+      # Las etapas de prueba corren aunque una anterior falle (siempre que el
+      # codigo compile), para ver en una sola corrida todo lo que falla.
+      - name: Pruebas unitarias con cobertura
+        if: ${{ !cancelled() && steps.compilar.outcome == 'success' }}
+        working-directory: api
+        run: npm run test:cov -- --ci
+
+      - name: Pruebas de integracion contra las bases reales
+        if: ${{ !cancelled() && steps.compilar.outcome == 'success' }}
+        working-directory: api
+        run: npm run test:e2e -- --ci
+
+      # Las bases deben rechazar solas los datos invalidos, aunque la API
+      # falle. Cada script imprime una linea OK o FALLA por comprobacion.
+      - name: Integridad de PostgreSQL (restricciones CHECK, UNIQUE y FK)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          docker compose exec -T postgres psql -U "$POSTGRES_USUARIO" -d colectivos \
+            -v ON_ERROR_STOP=1 -f /scripts/pruebas_integridad.sql | tee integridad.txt
+          grep -q "OK" integridad.txt
+          ! grep -q "FALLA" integridad.txt
+
+      - name: Validadores de MongoDB ($jsonSchema e indice unico)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          docker compose exec -T mongo sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --file /scripts/pruebas_validador.js' | tee validador.txt
+          grep -q "OK" validador.txt
+          ! grep -q "FALLA" validador.txt
+
+      # Hallazgo V-03: lo que se despliega no puede tener NINGUNA
+      # vulnerabilidad conocida, de cualquier severidad.
+      - name: Dependencias de produccion sin vulnerabilidades conocidas
+        if: ${{ !cancelled() }}
+        working-directory: api
+        run: npm audit --omit=dev --audit-level=low
+
+      # Las herramientas de desarrollo (jest, @nestjs/cli) no se despliegan,
+      # pero tampoco pueden tener vulnerabilidades moderadas o mayores. Las
+      # bajas que no tienen version corregida se registran en el informe
+      # como riesgo residual aceptado.
+      - name: Dependencias de desarrollo sin vulnerabilidades moderadas o mayores
+        if: ${{ !cancelled() }}
+        working-directory: api
+        run: npm audit --audit-level=moderate
+
+      - name: Registros de las bases si algo fallo
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+  catalogo:
+    name: Herramientas del catalogo de recorridos (Python)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v5
+
+      # Lectura del registro del MTT, nombres de calles, grafo, filtro por
+      # comuna y dibujo de los recorridos, con un barrio inventado.
+      - name: Pruebas unitarias de las herramientas
+        run: python3 -m unittest discover -s herramientas/catalogo/pruebas -v
+
+      # El SQL generado no puede traer datos personales del registro original.
+      - name: Los datos del catalogo no traen RUT, telefonos ni correos
+        run: |
+          if gunzip -c bd/postgres/inicio/06_catalogo_puntos.sql.gz | cat - bd/postgres/inicio/05_catalogo_datos.sql \
+            | grep -En '[0-9]{1,2}\.?[0-9]{3}\.?[0-9]{3}-[0-9kK]|@[a-z0-9-]+\.[a-z]{2,}|\+?56 ?9 ?[0-9]{4} ?[0-9]{4}'; then
+            echo "Hay datos que parecen personales en el catalogo"
+            exit 1
+          fi
+          echo "Sin RUT, correos ni telefonos"
