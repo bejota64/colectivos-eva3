@@ -129,8 +129,43 @@ SELECT resultado FROM (VALUES
            VALUES (-1, 'ida', 1, 'Calle', 'Comuna')$s$, '23503')),
     (33, pg_temp.debe_rechazar('Catalogo: punto fuera de Chile',
         $s$INSERT INTO catalogo_puntos (linea_id, sentido, orden, latitud, longitud, distancia_acumulada_m)
-           SELECT id, 'ida', 99999, 48.85, 2.35, 0 FROM catalogo_lineas ORDER BY id LIMIT 1$s$, '23514'))
+           SELECT id, 'ida', 99999, 48.85, 2.35, 0 FROM catalogo_lineas ORDER BY id LIMIT 1$s$, '23514')),
+    -- Administracion desde el panel (07_administracion.sql). 42501 = sin permiso, 22023 = dato invalido
+    (34, pg_temp.debe_rechazar('Administracion: un representante intenta crear otro representante',
+        $s$SELECT administrar_crear_representante('00000000-0000-4000-8000-000000000002',
+           'Rosa Perez', 'rosa@ejemplo.cl', '$2b$12$abcdefghijklmnopqrstuuJ0123456789012345678901234567890')$s$, '42501')),
+    (35, pg_temp.debe_rechazar('Administracion: contrasena que no llega como hash bcrypt',
+        $s$SELECT administrar_crear_representante('00000000-0000-4000-8000-000000000001',
+           'Rosa Perez', 'rosa@ejemplo.cl', 'clave-en-texto-plano')$s$, '22023')),
+    (36, pg_temp.debe_rechazar('Administracion: trazado de una linea sin recorrido dibujado',
+        $s$SELECT administrar_crear_trazado('00000000-0000-4000-8000-000000000001', '4999', 'Linea 4999',
+           'Puente Alto', '00000000-0000-4000-8000-000000000002',
+           (SELECT l.id FROM catalogo_lineas l WHERE NOT EXISTS (SELECT 1 FROM catalogo_puntos p WHERE p.linea_id = l.id) ORDER BY l.id LIMIT 1),
+           'Origen', 'Destino')$s$, '22023')),
+    (37, pg_temp.debe_rechazar('Administracion: trazado asignado a alguien que no es representante',
+        $s$SELECT administrar_crear_trazado('00000000-0000-4000-8000-000000000001', '4998', 'Linea 4998',
+           'Puente Alto', '00000000-0000-4000-8000-000000000001', 359, 'Origen', 'Destino')$s$, '22023'))
 ) AS pruebas (numero, resultado)
 ORDER BY numero;
+
+-- 38. La cuenta de la API no puede crear un administrador directamente
+-- (trigger de 07_administracion.sql). Se prueba con esa misma cuenta.
+\getenv api_usuario POSTGRES_API_USUARIO
+CREATE FUNCTION public.prueba_api_crea_privilegiado() RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO usuarios (nombre_completo, correo_electronico, contrasena_hash, rol)
+    VALUES ('Cuenta Intrusa', 'intrusa@ejemplo.cl', 'x', 'administrador');
+    RETURN 'FALLA | La cuenta de la API creo un administrador';
+EXCEPTION WHEN OTHERS THEN
+    IF SQLSTATE = '42501' THEN
+        RETURN 'OK    | La cuenta de la API no puede crear un administrador';
+    END IF;
+    RETURN 'FALLA | La cuenta de la API no puede crear un administrador | error inesperado: ' || SQLERRM;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.prueba_api_crea_privilegiado() TO :"api_usuario";
+SET LOCAL ROLE :"api_usuario";
+SELECT public.prueba_api_crea_privilegiado() AS resultado;
+RESET ROLE;
 
 ROLLBACK;

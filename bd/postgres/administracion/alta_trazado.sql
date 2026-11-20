@@ -1,10 +1,12 @@
 -- =====================================================================
--- CU-13: el administrador da de alta un trazado y su representante.
+-- CU-13 por consola: alta de un trazado y su representante.
 --
--- Por diseno esto NO se hace desde la API: crear representantes y
--- trazados es poco frecuente y de alto impacto, asi que lo hace el
--- administrador con la cuenta duena de la base. La cuenta de la API ni
--- siquiera puede asignar el rol representante (03_cuenta_api.sql).
+-- La via normal es el panel del administrador (secciones Trazados y
+-- Representantes), que pasa por las funciones de 07_administracion.sql y
+-- copia el recorrido real desde el catalogo oficial. Este script queda
+-- para cuando el panel no sirve: una linea que no esta en el catalogo o
+-- cuyo recorrido no se pudo dibujar. Usa la cuenta duena de la base; la
+-- cuenta de la API no puede insertar representantes directamente.
 --
 -- Uso, desde la carpeta del proyecto (pide los datos uno por uno):
 --   docker compose exec -it postgres sh -c 'psql -U "$POSTGRES_USER" -d colectivos -f /scripts/administracion/alta_trazado.sql'

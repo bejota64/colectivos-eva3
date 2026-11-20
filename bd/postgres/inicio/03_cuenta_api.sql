@@ -60,6 +60,7 @@ GRANT UPDATE (estado, respuesta, gestionado_por, cerrado_en) ON reportes TO :"ap
 -- Perfil propio, restablecer contrasena y eliminar la cuenta propia
 -- (anonimizarla). La columna rol NO esta: la API no puede cambiar el rol
 -- de nadie, ni aunque alguien tome el control de esta cuenta. Los roles
--- los asigna solo el administrador, con la cuenta duena (CU-13).
+-- los asigna solo el administrador (CU-13): desde el panel, por medio de
+-- las funciones de 07_administracion.sql, o con la cuenta duena.
 GRANT UPDATE (nombre_completo, telefono, correo_electronico, contrasena_hash,
               activo, eliminado_en) ON usuarios TO :"api_usuario";
