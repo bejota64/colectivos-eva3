@@ -9,6 +9,7 @@ import { RolesGuard } from './comun/guards/roles.guard';
 import { SesionGuard } from './comun/guards/sesion.guard';
 import { MongoModulo } from './comun/mongo/mongo.modulo';
 import { AbordajesModulo } from './modulos/abordajes/abordajes.modulo';
+import { AdministracionModulo } from './modulos/administracion/administracion.modulo';
 import { AuditoriaModulo } from './modulos/auditoria/auditoria.modulo';
 import { AutenticacionModulo } from './modulos/autenticacion/autenticacion.modulo';
 import { CatalogoModulo } from './modulos/catalogo/catalogo.modulo';
@@ -49,6 +50,7 @@ import { ValoracionesModulo } from './modulos/valoraciones/valoraciones.modulo';
     TrazadosModulo,
     FlotaModulo,
     TarifasModulo,
+    AdministracionModulo,
     // Capa 3, operacion
     JornadasModulo,
     TiempoRealModulo,
