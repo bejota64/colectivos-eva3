@@ -1,0 +1,288 @@
+/* =====================================================================
+   Sistema visual de las tres apps
+   ---------------------------------------------------------------------
+   La identidad sale del colectivo chileno: auto negro con el letrero
+   amarillo en el techo. El amarillo se reserva para lo que el usuario
+   tiene que mirar o tocar (el letrero, la accion principal, el colectivo
+   en el mapa); el resto es neutro para que eso resalte.
+
+   Tipografia: Barlow (texto) y Barlow Condensed (letrero, cifras grandes
+   y titulos). Es una familia inspirada en la senaletica vial; va incluida
+   en el proyecto, asi que funciona sin conexion y sin servidores externos.
+   ===================================================================== */
+
+:root {
+  /* Marca */
+  --negro: #1f2023;          /* pintura del colectivo: barras, conductor */
+  --negro-2: #2c2e33;        /* superficies sobre negro */
+  --negro-3: #45484f;        /* bordes sobre negro */
+  --amarillo: #ffc72c;       /* letrero */
+  --amarillo-2: #f0b400;     /* borde y presion sobre amarillo */
+  --amarillo-suave: #fff3cc;
+
+  /* Neutros */
+  --asfalto: #eceef1;        /* fondo general */
+  --superficie: #ffffff;
+  --texto: #1f2023;
+  --texto-2: #5d6169;
+  --texto-3: #8a8f98;
+  --borde: #dadde2;
+  --sobre-negro: #f4f5f7;
+  --sobre-negro-2: #b9bdc5;
+
+  /* Asientos y estados (texto / fondo) */
+  --verde: #18794a;   --verde-fondo: #dff3e7;
+  --ambar: #9a5b00;   --ambar-fondo: #fff0d1;
+  --rojo: #c0262d;    --rojo-fondo: #fde4e4;
+  --azul: #1d5fa8;    --azul-fondo: #e1edfa;
+
+  --radio-s: 8px;
+  --radio: 12px;
+  --radio-l: 20px;
+  --sombra-flotante: 0 12px 32px -14px rgba(31, 32, 35, 0.45);
+
+  --texto-base: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --texto-letrero: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #raiz { height: 100%; }
+body {
+  margin: 0;
+  background: var(--asfalto);
+  color: var(--texto);
+  font: 400 16px/1.5 var(--texto-base);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--texto-letrero); font-weight: 700; line-height: 1.15; text-wrap: balance; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--azul); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.solo-lector { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* ---------- Letrero: el elemento de identidad ---------- */
+.letrero {
+  display: inline-flex; align-items: stretch;
+  background: var(--amarillo); color: #000;
+  border: 2px solid #000; border-radius: var(--radio-s);
+  font-family: var(--texto-letrero); text-transform: uppercase;
+  line-height: 1; box-shadow: inset 0 0 0 2px var(--amarillo), inset 0 0 0 3px rgba(0, 0, 0, 0.35);
+}
+.letrero-numero {
+  display: grid; place-items: center;
+  padding: 6px 10px; font-size: 26px; font-weight: 700; letter-spacing: 0.02em;
+  border-right: 2px solid #000;
+}
+.letrero-texto { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 12px; }
+.letrero-texto b { font-size: 17px; font-weight: 700; letter-spacing: 0.03em; }
+.letrero-texto span { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; opacity: 0.75; }
+.letrero-chico .letrero-numero { font-size: 20px; padding: 4px 8px; }
+.letrero-chico .letrero-texto b { font-size: 14px; }
+
+/* Patente chilena: placa blanca con borde negro */
+.patente {
+  display: inline-block; padding: 2px 8px;
+  border: 2px solid currentColor; border-radius: 6px;
+  font-family: var(--texto-letrero); font-weight: 700; font-size: 17px; letter-spacing: 0.08em;
+  background: var(--superficie); color: var(--texto);
+}
+
+/* ---------- Botones ---------- */
+.boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 20px; border-radius: var(--radio);
+  border: 2px solid transparent; font-weight: 600; font-size: 16px; text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
+}
+.boton:active { transform: translateY(1px); }
+.boton-principal { background: var(--amarillo); color: #000; border-color: #000; }
+.boton-principal:hover { background: var(--amarillo-2); }
+.boton-oscuro { background: var(--negro); color: var(--sobre-negro); }
+.boton-oscuro:hover { background: #000; }
+.boton-secundario { background: var(--superficie); color: var(--texto); border-color: var(--borde); }
+.boton-secundario:hover { border-color: var(--texto); }
+.boton-peligro { background: var(--superficie); color: var(--rojo); border-color: var(--rojo); }
+.boton-peligro:hover { background: var(--rojo-fondo); }
+.boton-texto { background: none; color: var(--texto); min-height: 44px; padding: 0 8px; text-decoration: underline; text-underline-offset: 3px; }
+.boton-ancho { width: 100%; }
+.boton-grande { min-height: 58px; font-size: 18px; }
+.boton:disabled { background: var(--borde); color: var(--texto-3); border-color: transparent; cursor: not-allowed; transform: none; }
+.boton-icono { min-height: 40px; width: 40px; padding: 0; border-radius: 50%; }
+
+/* ---------- Formularios ---------- */
+.formulario { display: flex; flex-direction: column; gap: 16px; }
+.campo { display: flex; flex-direction: column; gap: 6px; }
+.campo label { font-size: 14px; font-weight: 600; }
+.campo-ayuda { font-size: 13px; color: var(--texto-2); }
+.entrada {
+  width: 100%; min-height: 48px; padding: 0 14px;
+  border: 1.5px solid var(--borde); border-radius: var(--radio); background: var(--superficie);
+}
+textarea.entrada { padding: 12px 14px; min-height: 104px; resize: vertical; }
+.entrada:focus { outline: none; border-color: var(--texto); box-shadow: 0 0 0 3px var(--amarillo-suave); }
+.entrada[aria-invalid='true'] { border-color: var(--rojo); }
+.clave { position: relative; }
+.clave .entrada { padding-right: 92px; }
+.clave .boton-texto { position: absolute; right: 4px; top: 2px; text-decoration: none; font-weight: 600; font-size: 14px; }
+.medidor { height: 6px; border-radius: 3px; background: var(--borde); overflow: hidden; }
+.medidor i { display: block; height: 100%; background: var(--ambar); transition: width 0.15s; }
+.medidor i.listo { background: var(--verde); }
+.casilla { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; }
+.casilla input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: #000; flex: none; }
+
+/* ---------- Mensajes ---------- */
+.mensaje { border-radius: var(--radio); padding: 12px 14px; font-size: 14px; font-weight: 500; }
+.mensaje-error { background: var(--rojo-fondo); color: var(--rojo); }
+.mensaje-aviso { background: var(--ambar-fondo); color: var(--ambar); }
+.mensaje-ok { background: var(--verde-fondo); color: var(--verde); }
+.notificacion {
+  position: fixed; left: 50%; top: max(16px, env(safe-area-inset-top)); z-index: 2000; transform: translateX(-50%);
+  width: max-content; max-width: min(440px, calc(100% - 32px)); padding: 12px 18px; border-radius: var(--radio);
+  background: var(--negro); color: var(--sobre-negro); font-weight: 500; box-shadow: var(--sombra-flotante);
+}
+@media (min-width: 760px) {
+  .notificacion { top: auto; bottom: 24px; }
+}
+
+/* ---------- Piezas pequenas ---------- */
+.pildora {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px;
+  border-radius: 13px; font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.pildora::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pildora-verde { color: var(--verde); background: var(--verde-fondo); }
+.pildora-ambar { color: var(--ambar); background: var(--ambar-fondo); }
+.pildora-rojo { color: var(--rojo); background: var(--rojo-fondo); }
+.pildora-azul { color: var(--azul); background: var(--azul-fondo); }
+.pildora-gris { color: var(--texto-2); background: var(--asfalto); }
+
+.asientos {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px 0 4px;
+  border-radius: 15px; font-weight: 600; font-size: 14px; white-space: nowrap; color: #fff;
+}
+.asientos b {
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25); font-variant-numeric: tabular-nums;
+}
+.asientos[data-nivel='disponible'] { background: var(--verde); }
+.asientos[data-nivel='ultimo'] { background: var(--ambar); }
+.asientos[data-nivel='completo'] { background: var(--rojo); }
+
+.avatar {
+  display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--amarillo-suave); color: var(--texto); font-weight: 700; font-size: 15px;
+}
+
+.vacio { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 32px 16px; text-align: center; color: var(--texto-2); }
+.vacio svg { color: var(--texto-3); }
+
+.cargando { display: grid; place-items: center; min-height: 100%; padding: 32px; color: var(--texto-2); }
+
+.letrero-numero:last-child { border-right: 0; }
+
+/* ---------- Marca (letrero + nombre de la app) ---------- */
+.marca { display: inline-flex; align-items: center; gap: 10px; }
+.marca .letrero-numero { font-size: 17px; padding: 5px 9px 4px; letter-spacing: 0.06em; }
+.marca-app { font-family: var(--texto-letrero); font-weight: 600; font-size: 19px; color: var(--texto); }
+.marca-oscura .marca-app { color: var(--sobre-negro); }
+
+/* ---------- Carga ---------- */
+.cargando { gap: 14px; font-weight: 500; }
+.cargando-letrero {
+  width: 44px; height: 18px; border: 2px solid #000; border-radius: 4px;
+  background: linear-gradient(90deg, var(--amarillo) 0 40%, var(--amarillo-2) 40% 60%, var(--amarillo) 60%) 0 0 / 200% 100%;
+  animation: brillo 1.1s linear infinite;
+}
+@keyframes brillo { to { background-position: -200% 0; } }
+
+/* ---------- Dialogos ---------- */
+.dialogo {
+  border: 0; padding: 0; max-width: none; max-height: none; color: var(--texto);
+  background: transparent;
+}
+.dialogo::backdrop { background: rgba(20, 21, 23, 0.55); }
+.dialogo-contenido {
+  display: flex; flex-direction: column; gap: 16px;
+  background: var(--superficie); padding: 20px 20px 24px; overflow-y: auto;
+}
+.dialogo-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dialogo-cabecera h2 { font-size: 24px; padding-top: 4px; }
+.dialogo-descripcion { color: var(--texto-2); font-size: 15px; }
+.dialogo-descripcion p + p { margin-top: 8px; }
+.dialogo-acciones { display: flex; flex-direction: column; gap: 10px; }
+
+/* Hoja inferior en el celular */
+.dialogo-hoja { width: 100%; margin: auto auto 0; }
+.dialogo-hoja .dialogo-contenido {
+  max-height: 88dvh; border-radius: var(--radio-l) var(--radio-l) 0 0;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+.dialogo-hoja[open] .dialogo-contenido { animation: subir 0.22s ease-out; }
+@keyframes subir { from { transform: translateY(24px); opacity: 0.4; } }
+@media (min-width: 640px) {
+  .dialogo-hoja { width: min(480px, calc(100% - 32px)); margin: auto; }
+  .dialogo-hoja .dialogo-contenido { border-radius: var(--radio-l); }
+}
+
+/* Ventana centrada en el panel */
+.dialogo-centro { width: min(480px, calc(100% - 32px)); margin: auto; }
+.dialogo-centro.dialogo-amplio { width: min(640px, calc(100% - 32px)); }
+.dialogo-centro .dialogo-contenido { border-radius: var(--radio-l); max-height: 90dvh; padding: 24px 24px 28px; }
+.dialogo-centro .dialogo-acciones { flex-direction: row-reverse; justify-content: flex-start; }
+
+/* ---------- Otra app ---------- */
+.otra-app { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+.otra-app-tarjeta {
+  width: min(420px, 100%); display: flex; flex-direction: column; gap: 14px; text-align: center;
+  background: var(--superficie); border-radius: var(--radio-l); padding: 28px 24px;
+}
+.otra-app-tarjeta h1 { font-size: 28px; }
+.otra-app-tarjeta p { color: var(--texto-2); }
+.otra-app-oscura { background: var(--negro); }
+
+/* ---------- Mapa ---------- */
+.mapa { width: 100%; height: 100%; background: #e4e6ea; font: inherit; }
+.mapa .teselas { filter: grayscale(1) contrast(0.92) brightness(1.06); }
+.mapa .leaflet-control-attribution { font-size: 11px; background: rgba(255, 255, 255, 0.85); }
+.marcador-contenedor { background: none; border: 0; }
+.marcador-colectivo {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 60px; height: 42px; padding-bottom: 5px; background: var(--amarillo); color: #000;
+  border: 2px solid #000; border-radius: 7px; font-family: var(--texto-letrero); line-height: 1;
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.55); overflow: visible;
+  transition: transform 0.15s;
+}
+.marcador-colectivo::before {
+  content: ''; position: absolute; left: 3px; right: 3px; bottom: 3px; height: 4px; border-radius: 2px;
+  background: var(--verde);
+}
+.marcador-colectivo.nivel-ultimo::before { background: var(--ambar); }
+.marcador-colectivo.nivel-completo::before { background: var(--rojo); }
+.marcador-colectivo::after {
+  content: ''; position: absolute; left: 50%; bottom: -9px; margin-left: -6px;
+  border: 6px solid transparent; border-top-color: #000; border-bottom: 0;
+}
+.marcador-colectivo b { font-size: 22px; font-weight: 700; }
+.marcador-colectivo span { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; }
+.marcador-colectivo.seleccionado { transform: scale(1.15); box-shadow: 0 0 0 4px rgba(255, 199, 44, 0.45), 0 8px 18px -6px rgba(0, 0, 0, 0.6); }
+.marcador-colectivo.atenuado { background: #f3e2b0; border-color: #6b6e75; color: #45484f; }
+.marcador-colectivo.atenuado::after { border-top-color: #6b6e75; }
+.marcador-yo {
+  display: block; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--azul); border: 4px solid #fff; box-shadow: 0 0 0 6px rgba(29, 95, 168, 0.22), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.marcador-espera {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--superficie); color: var(--texto); border: 3px solid var(--negro);
+  font-weight: 700; font-size: 14px; box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.4);
+}
