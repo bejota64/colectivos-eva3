@@ -16,10 +16,10 @@ Proyecto Integrado · Ingeniería en Informática · INACAP.
 
 | Perfil | Funciones |
 |---|---|
-| Pasajero | Ver los colectivos en servicio con sus asientos libres y minutos estimados; avisar «estoy esperando» (1 a 4 personas); marcar «me subí» y «ya bajé»; calificar el viaje, felicitar al conductor o reportar un problema; buscar qué colectivo le sirve entre los recorridos reales de la Región Metropolitana; editar su perfil o eliminar su cuenta |
+| Pasajero | Elegir su línea cuando hay más de una en la app; ver los colectivos en servicio con sus asientos libres y minutos estimados; avisar «estoy esperando» (1 a 4 personas); marcar «me subí» y «ya bajé»; calificar el viaje, felicitar al conductor o reportar un problema; buscar qué colectivo le sirve entre los recorridos reales de la Región Metropolitana; editar su perfil o eliminar su cuenta |
 | Conductor | Abrir y cerrar su jornada; enviar su posición GPS; ajustar los asientos libres solo con el auto detenido; ver cuánta gente espera más adelante |
 | Representante | Ver la demanda por tramo de 500 m y por hora y el resumen por conductor; gestionar reportes, tarifas (con historial), vehículos y conductores; cerrar jornadas; exportar la demanda y los reportes en CSV. Solo de su trazado y sin datos personales de pasajeros |
-| Administrador | Consulta la auditoría (solo lectura). Crea trazados y representantes por script con la cuenta dueña de la base |
+| Administrador | Desde el panel: crea trazados a partir de una línea del registro oficial (con su recorrido real de ida y vuelta), crea cuentas de representante, cambia el representante de un trazado y activa o desactiva trazados y cuentas. Consulta la auditoría (solo lectura) |
 
 Las cuentas, autos y viajes incluidos son ficticios (trazado de prueba 9001). El catálogo de recorridos sí es real: los 660 recorridos de taxis colectivos de la Región Metropolitana inscritos en el registro del Ministerio de Transportes (julio de 2026), 756 de sus sentidos dibujados sobre las calles de OpenStreetMap, sin ningún dato de personas. Ver [`docs/catalogo-recorridos.md`](docs/catalogo-recorridos.md).
 
@@ -102,7 +102,7 @@ npm run lint         # análisis estático con reglas de React y accesibilidad
 |---|---|---|
 | Ingeniería de Software, Evaluación 3 | 20 de octubre de 2026 | La API base: autenticación, trazados, jornadas, tiempo real, abordajes, calificaciones y estadísticas, con sus pruebas |
 | Ingeniería de Software, Evaluación 4 | 15 de noviembre de 2026 | Reportes y su gestión, tarifas con historial, gestión de flota, exportación CSV, cierre automático de jornadas, auditoría para el administrador, cuenta propia, cuentas de base con permisos mínimos, pruebas de requisitos y de seguridad, diagramas UML |
-| Proyecto Integrado, Evaluación 3 | Desde el 11 de noviembre de 2026 | Repositorio con ramas protegidas y revisión obligatoria, corrección de dependencias, ruta de salud, imagen Docker y despliegue en Azure con HTTPS, pruebas del despliegue en cada cambio, interfaz web, catálogo de recorridos reales y pruebas de esta evaluación |
+| Proyecto Integrado, Evaluación 3 | Desde el 11 de noviembre de 2026 | Repositorio con ramas protegidas y revisión obligatoria, corrección de dependencias, ruta de salud, imagen Docker y despliegue en Azure con HTTPS, pruebas del despliegue en cada cambio, interfaz web, catálogo de recorridos reales, administración de trazados y representantes desde el panel y pruebas de esta evaluación |
 
 ## Despliegue
 

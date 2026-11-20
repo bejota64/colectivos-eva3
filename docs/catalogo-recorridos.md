@@ -16,8 +16,12 @@ qué calles pasa, en orden y por sentido, y el recorrido dibujado en el mapa.
 
 Estas tablas son de **solo lectura** y están separadas de `trazados`, que son
 los recorridos que operan con la aplicación (con representante, flota y
-tarifas). Una línea del catálogo pasa a operar cuando su representante la
-inscribe como trazado.
+tarifas). Una línea del catálogo pasa a operar cuando el administrador la
+crea como trazado desde el panel (sección Trazados): elige la línea, revisa el
+recorrido en el mapa y le asigna un representante. La función
+`administrar_crear_trazado` (`bd/postgres/inicio/07_administracion.sql`) copia
+los puntos de ida y vuelta de `catalogo_puntos` a `puntos_ruta`; solo acepta
+líneas dibujadas en ambos sentidos.
 
 ## Datos personales (Ley 21.719)
 
