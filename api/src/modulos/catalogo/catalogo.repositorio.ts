@@ -37,6 +37,22 @@ export interface PuntoCatalogoFila {
   distancia_acumulada_m: number;
 }
 
+export interface PuntoMapaFila {
+  linea_id: number;
+  sentido: 'ida' | 'vuelta';
+  orden: number;
+  latitud: number;
+  longitud: number;
+}
+
+/** Recuadro del mapa en grados (sur < norte, oeste < este). */
+export interface Recuadro {
+  sur: number;
+  oeste: number;
+  norte: number;
+  este: number;
+}
+
 /** Columnas comunes de una linea, mas sus comunas y si ya tiene la linea dibujada. */
 const COLUMNAS = `
   l.id, l.folio, l.numero_linea, l.empresa, l.tipo_servicio, l.nombre_recorrido, l.tipo_trazado,
@@ -134,6 +150,39 @@ export class CatalogoRepositorio {
       `SELECT sentido, orden, latitud::float8 AS latitud, longitud::float8 AS longitud, distancia_acumulada_m
        FROM catalogo_puntos WHERE linea_id = $1 ORDER BY sentido, orden`,
       [id],
+    );
+  }
+
+  /**
+   * Lineas con puntos dentro del recuadro del mapa, primero las que mas
+   * recorrido tienen ahi. Usa el indice por latitud y longitud.
+   */
+  enRecuadro(r: Recuadro, limite: number): Promise<LineaFila[]> {
+    return this.baseDatos.consultar<LineaFila>(
+      `WITH dentro AS (
+         SELECT p.linea_id, count(*) AS puntos
+         FROM catalogo_puntos p
+         WHERE p.latitud BETWEEN $1 AND $3 AND p.longitud BETWEEN $2 AND $4
+         GROUP BY p.linea_id
+         ORDER BY count(*) DESC, p.linea_id
+         LIMIT $5
+       )
+       SELECT ${COLUMNAS}
+       FROM dentro JOIN catalogo_lineas l ON l.id = dentro.linea_id
+       ORDER BY dentro.puntos DESC, l.id`,
+      [r.sur, r.oeste, r.norte, r.este, limite],
+    );
+  }
+
+  /** Puntos de esas lineas dentro del recuadro, en orden por linea y sentido. */
+  puntosEnRecuadro(lineas: number[], r: Recuadro): Promise<PuntoMapaFila[]> {
+    return this.baseDatos.consultar<PuntoMapaFila>(
+      `SELECT linea_id, sentido, orden, latitud::float8 AS latitud, longitud::float8 AS longitud
+       FROM catalogo_puntos
+       WHERE linea_id = ANY($1::int[])
+         AND latitud BETWEEN $2 AND $4 AND longitud BETWEEN $3 AND $5
+       ORDER BY linea_id, sentido, orden`,
+      [lineas, r.sur, r.oeste, r.norte, r.este],
     );
   }
 
