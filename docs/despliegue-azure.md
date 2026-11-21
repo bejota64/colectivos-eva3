@@ -104,7 +104,7 @@ Si aparece el error `RequestDisallowedByAzure`, la región no está en tu lista:
 2. En **Etiqueta de nombre DNS** escribe `colectivos-inacap`. Si está ocupado, agrega un número.
 3. **Guardar**.
 
-La dirección queda como `colectivos-inacap.<región>.cloudapp.azure.com`, por ejemplo `colectivos-inacap.eastus.cloudapp.azure.com`. Anótala: es el dominio de los pasos siguientes.
+La dirección queda como `colectivos-inacap.<región>.cloudapp.azure.com`. La del proyecto, en Chile Central, es `colectivos-inacap.chilecentral.cloudapp.azure.com`. Anótala: es el dominio de los pasos siguientes.
 
 ## 5. Limitar SSH a la IP del equipo
 
@@ -119,7 +119,7 @@ Así nadie más en internet puede intentar entrar. Si te conectas desde otra red
 En Git Bash, con tu dominio:
 
 ```bash
-ssh -i ~/.ssh/colectivos_azure colectivos@colectivos-inacap.eastus.cloudapp.azure.com
+ssh -i ~/.ssh/colectivos_azure colectivos@colectivos-inacap.chilecentral.cloudapp.azure.com
 ```
 
 La primera vez pregunta si confías en el servidor: escribe `yes`. Cuando el inicio de la línea cambie a `colectivos@vm-colectivos:~$`, los comandos se ejecutan **en el servidor**, no en tu computador.
@@ -139,7 +139,7 @@ Si `git` no existe, instálalo antes con `sudo apt-get install -y git`.
 **B. Con el zip** `colectivos-codigo-completo.zip`, mientras el código no esté en GitHub. En **otra ventana de Git Bash, en tu computador** (no en la del servidor), con tu dominio:
 
 ```bash
-scp -i ~/.ssh/colectivos_azure ~/Documents/colectivos-codigo-completo.zip colectivos@colectivos-inacap.eastus.cloudapp.azure.com:
+scp -i ~/.ssh/colectivos_azure ~/Documents/colectivos-codigo-completo.zip colectivos@colectivos-inacap.chilecentral.cloudapp.azure.com:
 ```
 
 Vuelve a la ventana del servidor:
@@ -265,7 +265,7 @@ docker compose exec -T mongo sh -c 'mongorestore --archive --gzip --drop -u "$MO
 
 ## Costos y cuidado del crédito
 
-La máquina recomendada cuesta unos US$27 al mes en East US, más unos pocos dólares por el disco y la IP pública. Con los US$100 de Azure for Students alcanza para unos tres meses encendida todo el día.
+La máquina del proyecto (Standard_B2als_v2 en Chile Central) cuesta unos US$38 al mes encendida todo el día, más unos pocos dólares por el disco y la IP pública: los US$100 de Azure for Students alcanzan para unos dos meses y medio. En East US costaría unos US$27.
 
 - Revisa el crédito restante una vez por semana en **Education → Información general**.
 - Si no se va a usar por varios días: máquina virtual → **Detener**. Queda desasignada y deja de cobrar el cómputo; el disco y la IP siguen cobrando poco. Al volver a iniciarla conserva la dirección y los contenedores arrancan solos.
@@ -290,6 +290,7 @@ La máquina recomendada cuesta unos US$27 al mes en East US, más unos pocos dó
 | `ssh: connect to host … Connection timed out` | Tu IP cambió y la regla SSH la bloquea | Repetir el paso 5 |
 | `Permission denied (publickey)` | Clave o usuario equivocados | Usar `-i ~/.ssh/colectivos_azure` y el usuario `colectivos` |
 | `permission denied … docker.sock` | No volviste a entrar después de instalar Docker | `exit` y repetir el `ssh` |
+| Git Bash se cierra al pegar un bloque de varias líneas | Git Bash recibe mal el pegado largo | Pegar y ejecutar una línea a la vez. Docker también se puede instalar con el script oficial: `curl -fsSL https://get.docker.com -o get-docker.sh`, `sudo sh get-docker.sh` y `sudo usermod -aG docker $USER` (fue lo que se usó el 19-11-2026) |
 | El navegador muestra un error de certificado | `DOMINIO` mal escrito en `despliegue/.env` o puertos 80/443 cerrados | Revisar el dominio y las reglas de red; ver `docker compose logs caddy` |
 | `api` queda `unhealthy` | Alguna base no responde | `docker compose logs api postgres mongo` |
 | La API no conecta después de editar `despliegue/.env` | Las bases conservan las contraseñas con que se crearon | Volver a las contraseñas originales, o respaldar y empezar de cero con `docker compose down -v` |

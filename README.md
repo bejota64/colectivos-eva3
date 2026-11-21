@@ -8,7 +8,7 @@ Proyecto Integrado · Ingeniería en Informática · INACAP.
 
 | Integrante | Rol | Qué sube al repositorio |
 |---|---|---|
-| Benjamín Muñoz | Seguridad, API y bases de datos, despliegue | `api/`, `bd/`, `herramientas/`, `despliegue/` y la base del repositorio |
+| Benjamín Muñoz | Seguridad, API y bases de datos, despliegue | `api/`, `bd/`, `herramientas/`, `despliegue/`, `pruebas/` y la base del repositorio |
 | Martín García | Interfaz web y pruebas de usabilidad | `web/` |
 | Benjamín Cuevas | Scrum Master | Revisa y aprueba todos los pull requests; lleva el tablero del sprint |
 
@@ -42,7 +42,7 @@ Son tres aplicaciones web separadas, cada una instalable en la pantalla de inici
 | Datos de alto volumen y vida corta | MongoDB 7: posiciones GPS, avisos de espera y auditoría, con caducidad automática |
 | Seguridad | bcrypt, JWT de 15 minutos, token de refresco rotativo en cookie HttpOnly, helmet, límite de peticiones y cuentas de base con permisos mínimos para la API |
 | Web | React 19 con Vite 7 y TypeScript estricto; mapa con Leaflet y OpenStreetMap; tres apps instalables (PWA) con política de seguridad de contenido sin excepciones para scripts |
-| Pruebas | API: Jest y Supertest, y scripts de integridad para ambas bases. Web: Vitest y Playwright (celular y escritorio) |
+| Pruebas | API: Jest y Supertest, y scripts de integridad para ambas bases. Web: Vitest y Playwright (celular y escritorio). Servidor publicado: k6 (carga), OWASP ZAP y un script de revisión de seguridad |
 | Entorno | Docker Compose; en producción, Caddy con HTTPS automático en una máquina virtual de Azure |
 
 ## Estructura
@@ -54,6 +54,8 @@ bd/postgres/         esquema, datos de prueba, cuenta de la API, catálogo de re
 bd/mongo/            colecciones, validadores, índices y cuenta de la API
 despliegue/          servidor de producción: Caddy (HTTPS y la web), API y bases en Docker
 herramientas/        scripts en Python que generan el catálogo de recorridos (registro del MTT y OpenStreetMap)
+pruebas/             pruebas contra el servidor publicado: carga (k6) y seguridad (curl, openssl y OWASP ZAP)
+                     y el simulador de colectivos para las demostraciones
 docs/                guías de instalación, despliegue y catálogo de recorridos; diagramas UML en docs/uml
 .github/             pruebas automáticas en cada pull request
 docker-compose.yml   PostgreSQL 16 y MongoDB 7 para desarrollo
