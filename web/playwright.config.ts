@@ -21,7 +21,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'celular', use: { ...devices['Pixel 7'] }, testMatch: /(pasajero|conductor)\.spec\.ts/ },
-    { name: 'escritorio', use: { viewport: { width: 1366, height: 820 } }, testMatch: /panel\.spec\.ts/ },
+    { name: 'escritorio', use: { viewport: { width: 1366, height: 820 } }, testMatch: /(panel|escritorio)\.spec\.ts/ },
   ],
   webServer: {
     command: 'npm run preview',

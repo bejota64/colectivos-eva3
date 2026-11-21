@@ -52,6 +52,8 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       cuerpo: { correo_electronico: correo.trim(), contrasena },
     });
     guardarToken(sesion.token_acceso);
+    // El formulario desaparece con el foco en la contrasena: en Android el teclado se quedaba abierto.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setEstado({ tipo: 'con-sesion', usuario: sesion.usuario });
     return sesion.usuario;
   }, []);

@@ -74,9 +74,11 @@ export async function mensajeDeError(respuesta: Response): Promise<string> {
     // Sin cuerpo JSON: se usa el mensaje generico de abajo.
   }
   return respuesta.status >= 500
-    ? 'El servicio no respondio. Intenta de nuevo en unos segundos.'
-    : 'No se pudo completar la accion.';
+    ? 'El servicio no respondió. Intenta de nuevo en unos segundos.'
+    : 'No se pudo completar la acción.';
 }
+
+export const MENSAJE_SIN_CONEXION = 'Sin conexión. Revisa tu internet y vuelve a intentar.';
 
 async function enviar(url: string, opciones: Opciones): Promise<Response> {
   const cabeceras: Record<string, string> = {};
@@ -86,12 +88,18 @@ async function enviar(url: string, opciones: Opciones): Promise<Response> {
   if (opciones.cuerpo !== undefined) {
     cabeceras['Content-Type'] = 'application/json';
   }
-  return fetch(url, {
-    method: opciones.metodo ?? 'GET',
-    headers: cabeceras,
-    credentials: 'same-origin',
-    body: opciones.cuerpo !== undefined ? JSON.stringify(opciones.cuerpo) : undefined,
-  });
+  try {
+    return await fetch(url, {
+      method: opciones.metodo ?? 'GET',
+      headers: cabeceras,
+      credentials: 'same-origin',
+      body: opciones.cuerpo !== undefined ? JSON.stringify(opciones.cuerpo) : undefined,
+    });
+  } catch {
+    // Sin señal o sin internet: el navegador lanza «Failed to fetch» (o «Load failed» en
+    // Safari), en ingles. La persona ve un mensaje que entiende.
+    throw new ErrorApi(0, MENSAJE_SIN_CONEXION);
+  }
 }
 
 /** Pide un token nuevo con la cookie de refresco. Devuelve null si ya no hay sesion. */
@@ -128,7 +136,7 @@ async function pedir(ruta: string, opciones: Opciones = {}): Promise<Response> {
     const sesion = await renovarSesion();
     if (!sesion) {
       alPerderSesion?.();
-      throw new ErrorApi(401, 'Tu sesion termino. Vuelve a entrar.');
+      throw new ErrorApi(401, 'Tu sesión terminó. Vuelve a entrar.');
     }
     respuesta = await enviar(url, opciones);
   }

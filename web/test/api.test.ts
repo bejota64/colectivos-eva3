@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, cuandoSePierdaLaSesion, ErrorApi, guardarToken } from '../src/comun/api';
+import { api, cuandoSePierdaLaSesion, ErrorApi, guardarToken, MENSAJE_SIN_CONEXION } from '../src/comun/api';
 
 function respuesta(estado: number, cuerpo?: unknown): Response {
   return new Response(cuerpo === undefined ? null : JSON.stringify(cuerpo), {
@@ -65,6 +65,14 @@ describe('cliente de la API', () => {
   it('explica el limite de intentos (429) en lenguaje simple', async () => {
     fetchSimulado.mockResolvedValueOnce(respuesta(429, { message: 'ThrottlerException: Too Many Requests' }));
     await expect(api('/autenticacion/inicio-sesion', { metodo: 'POST', cuerpo: {} })).rejects.toThrow(/Espera un minuto/);
+  });
+
+  it('sin internet muestra un mensaje en español, no el «Failed to fetch» del navegador', async () => {
+    fetchSimulado.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const error = await api('/trazados').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ErrorApi);
+    expect((error as ErrorApi).estado).toBe(0);
+    expect((error as ErrorApi).message).toBe(MENSAJE_SIN_CONEXION);
   });
 
   it('una respuesta 204 no se intenta leer como JSON', async () => {

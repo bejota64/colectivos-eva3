@@ -16,7 +16,10 @@ test.describe('App del pasajero', () => {
     await expect(page.getByText('Sin ubicación')).toBeVisible();
     await expect(page.getByText('Recorrido completo')).toBeVisible();
 
-    await page.getByRole('radio', { name: '2' }).check({ force: true });
+    // Sin <input type="radio">: en Android tocarlos abria el teclado.
+    await expect(page.locator('input[type="radio"]')).toHaveCount(0);
+    await page.getByRole('radio', { name: '2' }).click();
+    await expect(page.getByRole('radio', { name: '2' })).toHaveAttribute('aria-checked', 'true');
     await page.getByRole('button', { name: /^Estoy esperando/ }).click();
     const permiso = page.getByRole('dialog', { name: '¿Nos dejas usar tu ubicación?' });
     await expect(permiso).toContainText('Se borra a los 20 minutos');
@@ -40,6 +43,145 @@ test.describe('App del pasajero', () => {
     await calificar.getByRole('button', { name: 'Listo' }).click();
     await expect(page.getByRole('button', { name: /^Estoy esperando/ })).toBeVisible();
     sinErrores();
+  });
+
+  test('ve las líneas del catálogo en el mapa y al tocar una sabe desde dónde y hacia dónde va', async ({ page }) => {
+    const sinErrores = vigilarErrores(page);
+    await simularApi(page, { sesion: 'pasajero1@colectivos.ejemplo.cl' });
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: /líneas aquí/ })).toBeVisible();
+    await expect(page.locator('path.linea-catalogo').first()).toBeAttached();
+
+    // Un punto sobre una linea, en la parte del mapa que no tapan el letrero ni la hoja.
+    const hoja = await page.locator('.hoja').boundingBox();
+    const arriba = 160;
+    const abajo = (hoja?.y ?? 600) - 10;
+    const punto = await page.locator('path.linea-catalogo').evaluateAll(
+      (caminos, { desde, hasta }) => {
+        for (const camino of caminos as SVGPathElement[]) {
+          const largo = camino.getTotalLength();
+          const matriz = camino.getScreenCTM();
+          if (!matriz) continue;
+          for (let d = 0; d <= largo; d += 10) {
+            const p = camino.getPointAtLength(d);
+            const x = p.x * matriz.a + p.y * matriz.c + matriz.e;
+            const y = p.x * matriz.b + p.y * matriz.d + matriz.f;
+            if (y > desde && y < hasta && x > 20 && x < window.innerWidth - 150) return { x, y };
+          }
+        }
+        return null;
+      },
+      { desde: arriba, hasta: abajo },
+    );
+    expect(punto, 'una linea visible en el mapa').not.toBeNull();
+    await page.mouse.click(punto?.x ?? 0, punto?.y ?? 0);
+
+    // Si pasan varias juntas, se elige una; si pasa una sola, se abre su ficha.
+    const elegir = page.getByRole('dialog', { name: /Por aquí pasan \d+ líneas/ });
+    const ficha = page.getByRole('dialog', { name: /^Línea / });
+    await expect(elegir.or(ficha)).toBeVisible();
+    if (await elegir.isVisible()) await elegir.getByRole('listitem').first().getByRole('button').click();
+    await expect(ficha).toContainText(/Ida: hacia|Recorrido circular/);
+    await expect(ficha).toContainText('todavía no usa la aplicación');
+
+    await ficha.getByRole('button', { name: 'Ver el recorrido en el mapa' }).click();
+    await expect(ficha).toBeHidden();
+    await expect(page.locator('path.linea-resaltada-ida')).toBeAttached();
+    await expect(page.locator('.mapa-elegida')).toContainText('Línea');
+    await page.getByRole('button', { name: /^Quitar la Línea/ }).click();
+    await expect(page.locator('path.linea-resaltada-ida')).toHaveCount(0);
+    sinErrores();
+  });
+
+  test('lista las líneas de la zona sin tocar el mapa, con ida y vuelta, y las puede ocultar', async ({ page }) => {
+    await simularApi(page, { sesion: 'pasajero1@colectivos.ejemplo.cl' });
+    await page.goto('/');
+    await page.getByRole('button', { name: /líneas aquí/ }).click();
+    const zona = page.getByRole('dialog', { name: 'Líneas en esta zona' });
+    await zona.getByRole('button', { name: /Los Lirios – Doctor Eduardo Cordero/ }).click();
+
+    const ficha = page.getByRole('dialog', { name: 'Línea 4001' });
+    await expect(ficha).toContainText('Ida: hacia Doctor Eduardo Cordero');
+    await expect(ficha).toContainText('Vuelta: hacia Los Lirios');
+    await expect(ficha).toContainText('Pasa por Puente Alto.');
+    await expect(ficha.getByRole('link', { name: 'Calles por donde pasa' })).toHaveAttribute('href', '/recorridos/351');
+    await ficha.getByRole('button', { name: 'Cerrar' }).click();
+
+    await page.getByRole('button', { name: /líneas aquí/ }).click();
+    await zona.getByLabel('Mostrar las líneas en el mapa').uncheck();
+    await zona.getByRole('button', { name: 'Cerrar' }).click();
+    await expect(page.locator('path.linea-catalogo')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Líneas ocultas' })).toBeVisible();
+    // Se recuerda en este navegador.
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Líneas ocultas' })).toBeVisible();
+  });
+
+  test('la leyenda de los asientos solo aparece cuando hay colectivos en el mapa', async ({ page }) => {
+    const estado = await simularApi(page, { sesion: 'pasajero1@colectivos.ejemplo.cl', sinColectivos: true });
+    await page.goto('/');
+    await expect(page.getByText('No hay colectivos en servicio en este sentido ahora.')).toBeVisible();
+    await expect(page.locator('.leyenda-mapa')).toHaveCount(0);
+    estado.sinColectivos = false;
+    await page.getByRole('button', { name: 'A la Plaza' }).click();
+    await expect(page.getByText('Próximo: ZZZZ01')).toBeVisible();
+    await expect(page.locator('.leyenda-mapa')).toHaveText('3 = asientos libres');
+  });
+
+  test('en el celular baja el panel para ver el mapa, con un toque o deslizando, y lo vuelve a subir', async ({ page }) => {
+    await simularApi(page, { sesion: 'pasajero1@colectivos.ejemplo.cl' });
+    await page.goto('/');
+    const esperar = page.getByRole('button', { name: /^Estoy esperando/ });
+    await expect(esperar).toBeVisible();
+    const altoAbierta = (await page.locator('.hoja').boundingBox())?.height ?? 0;
+
+    await page.getByRole('button', { name: 'Bajar el panel para ver el mapa' }).click();
+    await expect(esperar).toBeHidden();
+    // Plegada queda una linea con lo importante.
+    await expect(page.getByRole('button', { name: /^Próximo: ZZZZ01/ })).toBeVisible();
+    expect((await page.locator('.hoja').boundingBox())?.height ?? 0).toBeLessThan(altoAbierta / 2);
+    await page.getByRole('button', { name: /^Próximo: ZZZZ01/ }).click();
+    await expect(esperar).toBeVisible();
+
+    // Deslizar el asa hacia abajo tambien la baja.
+    const asa = await page.getByRole('button', { name: 'Bajar el panel para ver el mapa' }).boundingBox();
+    if (!asa) throw new Error('sin asa');
+    await page.mouse.move(asa.x + asa.width / 2, asa.y + asa.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(asa.x + asa.width / 2, asa.y + 150, { steps: 5 });
+    await page.mouse.up();
+    await expect(esperar).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Subir el panel' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('el botón de mi ubicación pide el permiso y centra el mapa en la persona', async ({ page }) => {
+    const sinErrores = vigilarErrores(page);
+    await simularApi(page, { sesion: 'pasajero1@colectivos.ejemplo.cl' });
+    await page.goto('/');
+    await expect(page.locator('.marcador-yo')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Mostrar mi ubicación' }).click();
+    await page.getByRole('dialog', { name: '¿Nos dejas usar tu ubicación?' }).getByRole('button', { name: 'Aceptar' }).click();
+
+    const yo = page.locator('.marcador-yo');
+    await expect(yo).toBeVisible();
+    // Queda en la parte del mapa que se ve: bajo el letrero y sobre la hoja.
+    await expect(async () => {
+      const punto = await yo.boundingBox();
+      const hoja = await page.locator('.hoja').boundingBox();
+      expect(punto && hoja && punto.y > 140 && punto.y + punto.height < hoja.y).toBe(true);
+    }).toPass();
+    sinErrores();
+  });
+
+  test('cuando el aviso vence (15 min) vuelve al inicio y se lo dice', async ({ page }) => {
+    await simularApi(page, { sesion: 'pasajero1@colectivos.ejemplo.cl' });
+    await page.goto('/');
+    await page.getByRole('button', { name: /^Estoy esperando/ }).click();
+    await page.getByRole('dialog', { name: '¿Nos dejas usar tu ubicación?' }).getByRole('button', { name: 'Aceptar' }).click();
+    await expect(page.getByText('Avisaste que esperas')).toBeVisible();
+    await page.clock.fastForward('16:00');
+    await expect(page.getByText(/Tu aviso venció/)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Estoy esperando/ })).toBeVisible();
   });
 
   test('cambia de sentido con un toque y el letrero muestra el nuevo destino', async ({ page }) => {
@@ -185,6 +327,53 @@ test.describe('App del pasajero', () => {
     // Al volver a abrir la app sigue en la misma línea.
     await page.reload();
     await expect(page.getByRole('button', { name: /^Línea 4008 hacia/ })).toBeVisible();
+    sinErrores();
+  });
+});
+
+test.describe('Pasajero lejos del recorrido (en la casa o en la sala de clases)', () => {
+  // Santiago centro: a unos 17 km del recorrido del 9001.
+  test.use({ geolocation: { latitude: -33.4521, longitude: -70.6536 } });
+
+  test('sigue viendo moverse los colectivos y la app le explica por qué no hay minutos', async ({ page }) => {
+    const sinErrores = vigilarErrores(page);
+    const conUbicacion: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().includes('/api/tiempo-real/colectivos') && r.url().includes('latitud=')) conUbicacion.push(r.url());
+    });
+    await simularApi(page, { sesion: 'pasajero1@colectivos.ejemplo.cl' });
+    await page.goto('/');
+    await page.getByRole('button', { name: /^Estoy esperando/ }).click();
+    await page.getByRole('dialog', { name: '¿Nos dejas usar tu ubicación?' }).getByRole('button', { name: 'Aceptar' }).click();
+
+    // No se manda el aviso: se explica que hay que estar en el recorrido.
+    await expect(page.getByText(/Estás a [\d,]+ km del recorrido\. Para avisar que esperas/)).toBeVisible();
+    await expect(page.getByText(/Estás a [\d,]+ km del recorrido: ves por dónde van los colectivos/)).toBeVisible();
+    await expect(page.getByText('Lejos del recorrido')).toBeVisible();
+    // Los colectivos se piden sin la ubicacion (la API la rechazaria y el mapa quedaria congelado).
+    await expect(page.getByText('Próximo: ZZZZ01')).toBeVisible();
+    expect(conUbicacion).toEqual([]);
+    sinErrores();
+  });
+
+  test('una cuenta de la demo puede simular su ubicación en el recorrido, y la pantalla lo dice', async ({ page }) => {
+    const sinErrores = vigilarErrores(page);
+    await simularApi(page, { sesion: 'pasajero1@colectivos.ejemplo.cl' });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Menú' }).click();
+    await page.getByRole('button', { name: 'Simular mi ubicación (demostración)' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Ubicación simulada (demostración)' })).toBeVisible();
+
+    await page.getByRole('button', { name: /^Estoy esperando/ }).click();
+    await page.getByRole('dialog', { name: '¿Nos dejas usar tu ubicación?' }).getByRole('button', { name: 'Aceptar' }).click();
+    await expect(page.getByText('Avisaste que esperas')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'El más cercano llega en 4 min' })).toBeVisible();
+
+    // Se recuerda al recargar, y se quita con un toque.
+    await page.reload();
+    await expect(page.getByText('Ubicación simulada (demostración)')).toBeVisible();
+    await page.getByRole('button', { name: 'Usar mi ubicación real' }).click();
+    await expect(page.getByText('Ubicación simulada (demostración)')).toHaveCount(0);
     sinErrores();
   });
 });
