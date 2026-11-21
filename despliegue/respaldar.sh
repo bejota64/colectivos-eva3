@@ -3,6 +3,8 @@
 # Uso:  bash respaldar.sh
 # Restaurar: ver docs/despliegue-azure.md, seccion "Respaldos".
 set -euo pipefail
+# Los respaldos tienen correos y hashes de contrasenas: solo el usuario del servidor los lee.
+umask 077
 cd "$(dirname "$0")"
 
 FECHA=$(date +%Y-%m-%d_%H%M)
