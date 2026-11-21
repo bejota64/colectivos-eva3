@@ -113,6 +113,15 @@ describe('TiempoRealServicio', () => {
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
 
+    it('rechaza el salto aunque las dos posiciones lleguen con menos de 1 s (pentest PT-NEG-02)', async () => {
+      // Antes, con menos de 1 s entre envios no se calculaba la velocidad y el salto pasaba.
+      guardadas.push(ubicacion(PUNTO_1, 0, 0.3));
+      await expect(
+        servicio.registrarPosicion(IDS.conductor1, PUNTO_5, AHORA),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+      expect(guardadas).toHaveLength(1);
+    });
+
     it('con una posicion anterior de hace horas no calcula: usa la del GPS', async () => {
       guardadas.push(ubicacion(PUNTO_2, 483, 3 * 60 * 60));
       const r = await servicio.registrarPosicion(

@@ -11,6 +11,7 @@ las bases reales, integridad de la base, navegador y despliegue).
 | (comando más abajo) | Escaneo pasivo de vulnerabilidades web | OWASP ZAP (Docker) |
 | `carga/colectivos.k6.js` | Límite por IP, carga normal, hora punta y punto de quiebre | k6 (Docker) |
 | (manual) | Rendimiento y accesibilidad de las páginas | Lighthouse (Chrome) |
+| `seguridad/pentest-api.py` | Pruebas de penetración de la API (OWASP API Top 10), **solo en un entorno local o de prueba** | Python 3 + requests |
 
 Aparte, `simulador/` mueve colectivos de prueba por el recorrido para las
 demostraciones, con autos y cuentas propias (ver `simulador/README.md`).
@@ -163,6 +164,44 @@ para que use la sesión abierta), `/conductor/` y `/panel/`.
 **Esperado:** Accesibilidad ≥ 90, Buenas prácticas ≥ 90, Rendimiento ≥ 70 en
 celular.
 
+## 5. Pruebas de penetración de la API (entorno local, no en el servidor publicado)
+
+`seguridad/pentest-api.py` ataca la API como lo haría alguien con una cuenta
+cualquiera, siguiendo el OWASP API Security Top 10 (2023): ver o cambiar
+datos de otro trazado o de otro pasajero, usar funciones de otro rol, tokens
+falsos o vencidos, reusar la sesión después de cerrarla, adivinar contraseñas,
+colar campos («rol: administrador»), inyección SQL, NoSQL y de fórmulas en el
+CSV, cuerpos gigantes, posiciones GPS falsas o «teletransportadas», abordajes
+desde lejos, rutas ocultas, cookies, CORS, CSP, salir de la carpeta web y
+saltarse el límite por IP inventando la cabecera `X-Forwarded-For`.
+
+**Crea datos de prueba** (cuentas, un trazado, viajes y quejas) y bloquea por
+15 minutos una cuenta creada para eso: se corre contra el sistema levantado
+en el computador con `docker compose` (`DOMINIO=localhost`), nunca contra el
+servidor publicado. Si la dirección no es `localhost`, el script se niega.
+
+El límite por IP se sube y se baja en `despliegue/.env` de esa copia local,
+igual que en la sección 3.2 (`LIMITE_GENERAL_POR_MINUTO=100000` y
+`docker compose up -d api`; al terminar la fase 1 se quita esa línea).
+
+```bash
+pip install requests
+# Fase 1: con el límite por IP alto (las pruebas hacen ~300 peticiones)
+python pruebas/seguridad/pentest-api.py general pruebas/resultados/pentest-general.json
+# Fase 2: con el límite real (100 por minuto): límite, X-Forwarded-For y rociado de contraseñas
+python pruebas/seguridad/pentest-api.py limites pruebas/resultados/pentest-limites.json
+```
+
+Cada caso imprime `OK` o `FALLA` con lo obtenido y queda en el JSON con la
+petición, lo esperado y lo obtenido. Termina con código 1 si algo falla.
+`AUT-13` (saber si un correo ya está registrado al intentar registrarse) es un
+riesgo aceptado: sin verificación por correo no se puede evitar; lo mitiga el
+límite de 20 registros por minuto por IP.
+
+Resultado en el entorno local (21-11-2026): 88 casos, 87 aprobados y 1 riesgo
+aceptado, después de corregir el único hallazgo (PT-NEG-02: dos posiciones
+enviadas con menos de 1 s de diferencia se saltaban el control de velocidad).
+
 ## Plantilla de resultados
 
 | ID | Prueba | Esperado | Obtenido | Estado | Evidencia |
@@ -174,6 +213,7 @@ celular.
 | CAR-03 | Hora punta | Errores < 1 %, p95 < 1 s | | | `k6-punta.html` |
 | CAR-04 | Punto de quiebre | Se identifica el punto | | | `k6-quiebre.html` |
 | UX-LH | Lighthouse | Acc. ≥ 90, B.P. ≥ 90, Rend. ≥ 70 | | | `lighthouse-*.html` |
+| SEG-PEN | Pentest de la API (local) | 0 fallas (AUT-13 riesgo aceptado) | | | `pentest-general.json`, `pentest-limites.json` |
 
 Los resultados de estas pruebas dependen del servidor (2 vCPU y 4 GB) y de la
 conexión de quien las corre: se anota desde dónde se corrieron.
