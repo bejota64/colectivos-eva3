@@ -263,6 +263,28 @@ export interface DetalleLineaCatalogo extends LineaCatalogo {
   sentidos: SentidoCatalogo[];
 }
 
+/** [latitud, longitud] */
+export type Coordenada = [number, number];
+
+/** Linea del catalogo en el mapa principal: su resumen y los pedazos que caen en la zona visible. */
+export interface LineaMapa extends LineaCatalogo {
+  tramos: { sentido: NombreSentido; puntos: Coordenada[] }[];
+}
+
+export interface MapaCatalogo {
+  lineas: LineaMapa[];
+  /** Pasan mas lineas por la zona que las que vienen: hay que acercar el mapa. */
+  recortado: boolean;
+}
+
+/** Recuadro del mapa en grados. */
+export interface Recuadro {
+  sur: number;
+  oeste: number;
+  norte: number;
+  este: number;
+}
+
 // ---------- Administracion de trazados y representantes (CU-13) ----------
 
 export interface TrazadoAdministracion {

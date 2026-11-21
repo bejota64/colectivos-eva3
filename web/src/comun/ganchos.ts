@@ -5,7 +5,7 @@ export function textoDeError(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return 'Algo salio mal. Intenta de nuevo.';
+  return 'Algo salió mal. Intenta de nuevo.';
 }
 
 /**

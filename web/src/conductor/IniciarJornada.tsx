@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react';
 import { CarFront } from 'lucide-react';
 import { api, ErrorApi } from '../comun/api';
+import { OpcionRadio } from '../comun/componentes/OpcionRadio';
 import { Dialogo } from '../comun/componentes/Dialogo';
 import { MensajeError } from '../comun/componentes/Formulario';
 import { Patente } from '../comun/componentes/Letrero';
@@ -86,17 +87,15 @@ export function IniciarJornada({ trazados, aviso, alIniciar }: Props) {
               <p>No hay autos libres. Todos están en uso o inactivos: avisa al representante del trazado.</p>
             </div>
           )}
-          <div className="c-opciones">
-            {vehiculos.datos?.map((v) => (
-              <label key={v.id} className="c-opcion">
-                <input
-                  type="radio"
-                  name="vehiculo"
-                  value={v.id}
-                  checked={vehiculoId === v.id}
-                  onChange={() => setVehiculoId(v.id)}
-                  required
-                />
+          <div className="c-opciones" role="radiogroup" aria-label="Tu auto">
+            {vehiculos.datos?.map((v, i) => (
+              <OpcionRadio
+                key={v.id}
+                className="c-opcion"
+                marcada={vehiculoId === v.id}
+                enfocable={!vehiculoId && i === 0}
+                alElegir={() => setVehiculoId(v.id)}
+              >
                 <Patente>{v.patente}</Patente>
                 <span className="c-opcion-texto">
                   <b>
@@ -104,7 +103,7 @@ export function IniciarJornada({ trazados, aviso, alIniciar }: Props) {
                   </b>
                   <span>{v.capacidad} asientos</span>
                 </span>
-              </label>
+              </OpcionRadio>
             ))}
           </div>
         </fieldset>
@@ -114,19 +113,17 @@ export function IniciarJornada({ trazados, aviso, alIniciar }: Props) {
             <span className="c-paso">2</span>
             ¿Hacia dónde partes?
           </legend>
-          <div className="c-opciones">
-            {trazados.flatMap((t) =>
-              t.sentidos.map((s) => (
-                <label key={s.id} className="c-opcion c-opcion-sentido">
-                  <input
-                    type="radio"
-                    name="sentido"
-                    value={s.id}
-                    aria-label={`Hacia ${s.destino}, desde ${s.origen}`}
-                    checked={sentidoId === s.id}
-                    onChange={() => setSentidoId(s.id)}
-                    required
-                  />
+          <div className="c-opciones" role="radiogroup" aria-label="¿Hacia dónde partes?">
+            {trazados.flatMap((t, it) =>
+              t.sentidos.map((s, is) => (
+                <OpcionRadio
+                  key={s.id}
+                  className="c-opcion c-opcion-sentido"
+                  etiqueta={`Hacia ${s.destino}, desde ${s.origen}`}
+                  marcada={sentidoId === s.id}
+                  enfocable={!sentidoId && it === 0 && is === 0}
+                  alElegir={() => setSentidoId(s.id)}
+                >
                   <span className="c-ruta" aria-hidden="true">
                     <i />
                     <i />
@@ -138,7 +135,7 @@ export function IniciarJornada({ trazados, aviso, alIniciar }: Props) {
                     </span>
                     <b>Hacia {s.destino}</b>
                   </span>
-                </label>
+                </OpcionRadio>
               )),
             )}
           </div>

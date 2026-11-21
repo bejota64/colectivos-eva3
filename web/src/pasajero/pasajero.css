@@ -43,10 +43,10 @@
   .acceso-escena { height: 300px; margin-inline: -48px; }
   .acceso-cordillera { height: 230px; }
   .acceso-colectivo { width: 420px; }
-  .acceso-tarjeta {
-    flex: 1; margin: 0; justify-content: center; padding: 48px max(48px, calc((100% - 420px) / 2));
-    border-radius: 0;
-  }
+  /* El porcentaje de un padding se calcula sobre el ancho de la pagina, no
+     de la tarjeta: por eso el ancho del formulario se limita en sus hijos. */
+  .acceso-tarjeta { flex: 1; margin: 0; justify-content: center; padding: 48px; border-radius: 0; }
+  .acceso-tarjeta > * { width: 100%; max-width: 420px; margin-inline: auto; }
 }
 
 .pestanas { display: flex; gap: 4px; padding: 4px; border-radius: var(--radio); background: var(--asfalto); }
@@ -85,10 +85,26 @@
   background: var(--superficie); border-radius: var(--radio-l) var(--radio-l) 0 0;
   box-shadow: 0 -12px 32px -14px rgba(0, 0, 0, 0.4);
 }
-.hoja-asa { flex: none; width: 40px; height: 4px; border-radius: 2px; background: var(--borde); margin: 2px auto 0; }
+/* Asa: se toca o se desliza para bajar y subir la hoja. Zona de toque grande, raya chica. */
+.hoja-asa {
+  flex: none; display: grid; place-items: center; width: 100%; height: 26px; margin: -6px 0 -8px;
+  border: 0; background: none; touch-action: none; cursor: grab;
+}
+.hoja-asa::before { content: ''; width: 44px; height: 5px; border-radius: 3px; background: var(--borde); }
+.hoja-asa:focus-visible { outline: 3px solid var(--azul); outline-offset: -3px; border-radius: 8px; }
+@media (max-width: 759.98px) { .hoja-plegada > :not(.hoja-asa):not(.hoja-resumen) { display: none; } }
+.hoja-resumen {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 0 2px;
+  border: 0; background: none; color: var(--texto); font: inherit; font-size: 17px; font-weight: 700; text-align: left;
+}
+/* Boton «mi ubicación», como en las apps de mapas */
+.mapa-boton-redondo {
+  display: grid; place-items: center; width: 46px; height: 46px; border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96); color: var(--texto); box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.5);
+}
 @media (min-width: 760px) {
   .hoja { top: 96px; left: 16px; right: auto; bottom: 16px; width: 380px; max-height: none; border-radius: var(--radio-l); padding-top: 18px; }
-  .hoja-asa { display: none; }
+  .hoja-asa, .hoja-resumen { display: none; }
 }
 
 .proximo { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
@@ -123,14 +139,14 @@
 
 .segmentos { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; min-width: 0; }
 .segmentos legend { padding: 0; margin-bottom: 8px; font-weight: 600; font-size: 15px; }
-.segmento { position: relative; }
-.segmento input { position: absolute; opacity: 0; inset: 0; margin: 0; }
+.segmento { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; }
 .segmento span {
   display: grid; place-items: center; min-height: 50px; border: 1.5px solid var(--borde); border-radius: var(--radio);
   font-family: var(--texto-letrero); font-weight: 700; font-size: 22px; cursor: pointer; transition: background-color 0.12s;
 }
-.segmento input:checked + span { background: var(--negro); border-color: var(--negro); color: var(--amarillo); }
-.segmento input:focus-visible + span { outline: 3px solid var(--azul); outline-offset: 2px; }
+.segmento[aria-checked='true'] span { background: var(--negro); border-color: var(--negro); color: var(--amarillo); }
+.segmento:focus-visible { outline: none; }
+.segmento:focus-visible span { outline: 3px solid var(--azul); outline-offset: 2px; }
 .segmentos-texto { grid-template-columns: repeat(2, 1fr); }
 .segmentos-texto .segmento span { font-family: var(--texto-base); font-size: 16px; font-weight: 600; min-height: 46px; }
 
@@ -209,10 +225,12 @@
 .calificar .boton { align-self: flex-start; }
 .estrellas { border: 0; padding: 0; margin: 0; display: flex; gap: 2px; }
 .estrellas legend { padding: 0; margin-bottom: 6px; font-weight: 600; }
-.estrellas label { position: relative; display: grid; place-items: center; width: 46px; height: 46px; cursor: pointer; color: var(--texto-3); }
-.estrellas input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
-.estrellas label.llena svg { fill: var(--amarillo); stroke: var(--amarillo-2); }
-.estrellas label:has(input:focus-visible) { outline: 3px solid var(--azul); border-radius: 8px; }
+.estrellas button {
+  position: relative; display: grid; place-items: center; width: 46px; height: 46px; padding: 0;
+  border: 0; background: none; cursor: pointer; color: var(--texto-3);
+}
+.estrellas button.llena svg { fill: var(--amarillo); stroke: var(--amarillo-2); }
+.estrellas button:focus-visible { outline: 3px solid var(--azul); border-radius: 8px; }
 .estrellas-fijas { display: flex; align-items: center; gap: 2px; color: var(--texto-3); }
 .estrellas-fijas .llena { fill: var(--amarillo); stroke: var(--amarillo-2); }
 .estrellas-fijas span { margin-left: 8px; color: var(--texto-2); font-size: 14px; }
@@ -244,16 +262,38 @@
 .sentidos button:disabled:not([aria-pressed='true']) { opacity: 0.45; cursor: not-allowed; }
 .sentidos-pagina { margin-top: 0; }
 
-.leyenda-mapa {
-  position: absolute; z-index: 900; right: 12px; top: 150px; display: flex; align-items: center; gap: 6px;
-  padding: 5px 10px 5px 5px; border-radius: 10px; background: rgba(255, 255, 255, 0.94);
+/* Controles sobre el mapa: leyenda, lineas de la zona y linea elegida */
+.mapa-controles {
+  position: absolute; z-index: 900; right: 12px; top: 150px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+}
+.leyenda-mapa, .mapa-boton, .mapa-elegida {
+  display: flex; align-items: center; gap: 6px; margin: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.94);
   font-size: 13px; font-weight: 600; box-shadow: 0 4px 10px -6px rgba(0, 0, 0, 0.4);
 }
+.leyenda-mapa { padding: 5px 10px 5px 5px; }
+.mapa-boton { min-height: 34px; padding: 6px 10px; border: 0; color: var(--texto); font-family: inherit; }
+.mapa-elegida { overflow: hidden; }
+/* Ubicacion simulada: borde punteado para que se note que no es real */
+.mapa-demo {
+  display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 10px; border: 2px dashed var(--negro);
+  border-radius: 10px; background: var(--amarillo); color: var(--negro); font-size: 13px; font-weight: 700;
+}
+.mapa-demo button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; background: none; color: inherit; }
+.mapa-elegida button {
+  display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; border: 0;
+  background: none; color: var(--texto); font: inherit;
+}
+.mapa-elegida button + button { padding: 6px 9px; border-left: 1px solid var(--borde); }
+.linea-sentidos { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.linea-sentidos li { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.linea-datos { margin: 0; color: var(--texto-2); font-size: 14px; }
+.aviso-catalogo.aviso-catalogo-app { background: var(--verde-fondo); color: var(--verde) !important; }
 .leyenda-mapa b {
   display: grid; place-items: center; width: 28px; height: 22px; border: 2px solid #000; border-radius: 5px;
   background: var(--amarillo); font-family: var(--texto-letrero); font-size: 15px;
 }
-@media (min-width: 760px) { .leyenda-mapa { top: auto; bottom: 26px; } }
+@media (min-width: 760px) { .mapa-controles { top: auto; bottom: 26px; } }
 
 .tarifa-linea { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; font-weight: 600; color: var(--texto-2); }
 .tarifa-linea svg { flex: none; margin-top: 1px; color: var(--verde); }
@@ -326,7 +366,7 @@ button.proximo:hover { border-color: var(--texto); }
 .linea-datos b { font-size: 16px; line-height: 1.25; }
 .linea-datos > span { font-size: 14px; color: var(--texto-2); }
 .linea-etiquetas { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
-.fuente { font-size: 13px; color: var(--texto-3); padding: 0 4px; }
+.fuente { font-size: 13px; color: var(--texto-2); padding: 0 4px; }
 .recorrido-cabecera h2 { font-size: 22px; }
 .recorrido-cabecera p { color: var(--texto-2); }
 .aviso-catalogo { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--azul-fondo); color: var(--azul) !important; font-size: 14px; font-weight: 500; }

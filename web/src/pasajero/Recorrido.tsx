@@ -1,19 +1,21 @@
 /** Detalle de un recorrido del catalogo: el mapa y las calles por donde pasa, por sentido. */
 import { useState } from 'react';
 import { useParams } from 'react-router';
-import { Info } from 'lucide-react';
+import { BusFront, Info } from 'lucide-react';
 import { api } from '../comun/api';
 import { MensajeError } from '../comun/componentes/Formulario';
 import { Mapa } from '../comun/componentes/Mapa';
 import { Cargando } from '../comun/componentes/OtraApp';
 import { formatoDistancia } from '../comun/formato';
 import { useDatos } from '../comun/ganchos';
-import type { DetalleLineaCatalogo, NombreSentido } from '../comun/tipos';
+import type { DetalleLineaCatalogo, NombreSentido, Trazado } from '../comun/tipos';
+import { trazadoDeLinea } from './Lineas';
 import { Subpagina } from './Subpagina';
 
 export function Recorrido() {
   const { id = '' } = useParams();
   const detalle = useDatos(() => api<DetalleLineaCatalogo>(`/catalogo/lineas/${encodeURIComponent(id)}`), id);
+  const trazados = useDatos(() => api<Trazado[]>('/trazados'), 'trazados');
   const [sentido, setSentido] = useState<NombreSentido>('ida');
   const linea = detalle.datos;
   const actual = linea?.sentidos.find((s) => s.sentido === sentido) ?? linea?.sentidos[0];
@@ -35,10 +37,17 @@ export function Recorrido() {
               {linea.flota_vigente ? `${linea.flota_vigente} autos inscritos. ` : ''}
               Folio {linea.folio}.
             </p>
-            <p className="aviso-catalogo">
-              <Info size={18} aria-hidden="true" />
-              Esta línea todavía no usa la aplicación: puedes ver por dónde pasa, pero no dónde vienen sus autos.
-            </p>
+            {trazadoDeLinea(trazados.datos ?? [], linea.numero_linea) ? (
+              <p className="aviso-catalogo aviso-catalogo-app">
+                <BusFront size={18} aria-hidden="true" />
+                Esta línea usa la aplicación: en el inicio puedes ver dónde vienen sus colectivos.
+              </p>
+            ) : (
+              <p className="aviso-catalogo">
+                <Info size={18} aria-hidden="true" />
+                Esta línea todavía no usa la aplicación: puedes ver por dónde pasa, pero no dónde vienen sus autos.
+              </p>
+            )}
           </section>
 
           {linea.sentidos.length > 1 && (

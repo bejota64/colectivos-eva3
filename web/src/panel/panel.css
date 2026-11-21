@@ -121,7 +121,7 @@
 .p-tabla tbody th { font-weight: 600; }
 .p-tabla tbody tr:last-child > * { border-bottom: 0; }
 .p-num { text-align: right !important; font-variant-numeric: tabular-nums; }
-.p-fila-apagada > * { color: var(--texto-3); }
+.p-fila-apagada > * { color: var(--texto-2); }
 .p-fila-apagada .patente { opacity: 0.6; }
 .p-alerta { color: var(--rojo); font-weight: 700; }
 .p-acciones-fila { text-align: right !important; white-space: nowrap; }
@@ -231,7 +231,7 @@
 /* ---------- Administracion: trazados y representantes ---------- */
 .p-celda-doble { display: flex; flex-direction: column; line-height: 1.3; }
 .p-celda-doble small { font-size: 13px; color: var(--texto-2); }
-.p-fila-apagada .p-celda-doble small { color: var(--texto-3); }
+.p-fila-apagada .p-celda-doble small { color: var(--texto-2); }
 .p-celda-doble small.p-alerta { color: var(--rojo); font-weight: 600; }
 
 .p-catalogo { display: flex; flex-direction: column; gap: 12px; }

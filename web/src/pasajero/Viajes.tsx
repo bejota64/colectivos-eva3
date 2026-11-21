@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react';
 import { Route, Star } from 'lucide-react';
 import { api } from '../comun/api';
+import { OpcionRadio } from '../comun/componentes/OpcionRadio';
 import { Dialogo } from '../comun/componentes/Dialogo';
 import { MensajeError } from '../comun/componentes/Formulario';
 import { Patente } from '../comun/componentes/Letrero';
@@ -140,14 +141,19 @@ export function Calificar({ viajeId, alCalificar }: { viajeId: string; alCalific
 
   return (
     <div className="calificar">
-      <fieldset className="estrellas">
-        <legend>¿Cómo estuvo el viaje?</legend>
+      <fieldset className="estrellas" role="radiogroup" aria-labelledby={`titulo-estrellas-${viajeId}`}>
+        <legend id={`titulo-estrellas-${viajeId}`}>¿Cómo estuvo el viaje?</legend>
         {[1, 2, 3, 4, 5].map((n) => (
-          <label key={n} className={n <= elegidas ? 'llena' : ''}>
-            <input type="radio" name={`estrellas-${viajeId}`} value={n} checked={elegidas === n} onChange={() => setElegidas(n)} />
+          <OpcionRadio
+            key={n}
+            className={n <= elegidas ? 'llena' : ''}
+            marcada={elegidas === n}
+            enfocable={elegidas === 0 && n === 1}
+            alElegir={() => setElegidas(n)}
+            etiqueta={n === 1 ? '1 estrella' : `${n} estrellas`}
+          >
             <Star size={30} aria-hidden="true" />
-            <span className="solo-lector">{n === 1 ? '1 estrella' : `${n} estrellas`}</span>
-          </label>
+          </OpcionRadio>
         ))}
       </fieldset>
       {elegidas > 0 && (
@@ -214,16 +220,13 @@ export function Reportar({
       descripcion={<p>Lo recibe el representante del trazado. El conductor no verá quién lo escribió.</p>}
     >
       <form className="formulario" onSubmit={(e) => void enviar(e)}>
-        <fieldset className="segmentos segmentos-texto">
-          <legend className="solo-lector">Tipo</legend>
-          <label className="segmento">
-            <input type="radio" name="tipo" checked={tipo === 'queja'} onChange={() => cambiarTipo('queja')} />
+        <fieldset className="segmentos segmentos-texto" role="radiogroup" aria-label="Tipo">
+          <OpcionRadio className="segmento" marcada={tipo === 'queja'} alElegir={() => cambiarTipo('queja')}>
             <span>Queja</span>
-          </label>
-          <label className="segmento">
-            <input type="radio" name="tipo" checked={tipo === 'felicitacion'} onChange={() => cambiarTipo('felicitacion')} />
+          </OpcionRadio>
+          <OpcionRadio className="segmento" marcada={tipo === 'felicitacion'} alElegir={() => cambiarTipo('felicitacion')}>
             <span>Felicitación</span>
-          </label>
+          </OpcionRadio>
         </fieldset>
         <div className="campo">
           <label htmlFor="categoria">Motivo</label>

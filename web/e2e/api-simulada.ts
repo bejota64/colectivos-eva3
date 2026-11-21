@@ -117,7 +117,7 @@ interface LineaCatalogo {
   origen: string;
   destino: string;
   comunas: string[];
-  sentidos: { calles: { calle: string }[] }[];
+  sentidos: { sentido: 'ida' | 'vuelta'; calles: { calle: string }[]; puntos: { latitud: number; longitud: number }[] }[];
   [clave: string]: unknown;
 }
 const CATALOGO = JSON.parse(readFileSync(new URL('./datos/catalogo.json', import.meta.url), 'utf8')) as {
@@ -125,6 +125,36 @@ const CATALOGO = JSON.parse(readFileSync(new URL('./datos/catalogo.json', import
   lineas: LineaCatalogo[];
   cercanas: { id: number; distancia_m: number }[];
 };
+
+/**
+ * Lo mismo que GET /catalogo/mapa: las lineas con puntos en el recuadro y,
+ * de cada sentido, los pedazos seguidos que caen dentro (con margen).
+ */
+function lineasEnRecuadro(consulta: URLSearchParams): Respuesta {
+  const [sur, oeste, norte, este] = ['sur', 'oeste', 'norte', 'este'].map((c) => Number(consulta.get(c) ?? Number.NaN)) as [number, number, number, number];
+  if ([sur, oeste, norte, este].some(Number.isNaN) || sur >= norte || oeste >= este) return error(400, 'El recuadro del mapa no es valido');
+  if (norte - sur > 0.25 || este - oeste > 0.25) return error(400, 'Acerca el mapa para ver las lineas');
+  const margen = 0.002;
+  const dentro = (p: { latitud: number; longitud: number }) =>
+    p.latitud >= sur - margen && p.latitud <= norte + margen && p.longitud >= oeste - margen && p.longitud <= este + margen;
+  const lineas = CATALOGO.lineas.flatMap((linea) => {
+    const tramos = linea.sentidos.flatMap((s) => {
+      const pedazos: [number, number][][] = [];
+      let actual: [number, number][] = [];
+      for (const p of s.puntos) {
+        if (dentro(p)) actual.push([p.latitud, p.longitud]);
+        else {
+          if (actual.length > 1) pedazos.push(actual);
+          actual = [];
+        }
+      }
+      if (actual.length > 1) pedazos.push(actual);
+      return pedazos.map((puntos) => ({ sentido: s.sentido, puntos }));
+    });
+    return tramos.length > 0 ? [{ ...resumenCatalogo(linea), tramos }] : [];
+  });
+  return { estado: 200, cuerpo: { lineas, recortado: false } };
+}
 
 const sinTildes = (texto: string) => texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
@@ -150,6 +180,7 @@ function buscarEnCatalogo(buscar: string, comuna: string) {
 // ---------- Estado que cambian las pruebas ----------
 interface Estado {
   sesion: CorreoDemo | null;
+  sinColectivos: boolean;
   consentimiento: boolean;
   jornada: { id: string; patente: string; sentido_id: string; asientos_disponibles: number; capacidad: number; iniciada_en: string } | null;
   pedirConsentimientoAlConductor: boolean;
@@ -197,11 +228,14 @@ export interface Opciones {
   conGuia?: boolean;
   /** Hay dos lineas en la app (9001 y 4008): el pasajero puede elegir. */
   variosTrazados?: boolean;
+  /** Ningun colectivo en servicio (hasta que la prueba cambie estado.sinColectivos). */
+  sinColectivos?: boolean;
 }
 
 function estadoInicial(opciones: Opciones): Estado {
   return {
     sesion: opciones.sesion ?? null,
+    sinColectivos: Boolean(opciones.sinColectivos),
     variosTrazados: Boolean(opciones.variosTrazados),
     consentimiento: !opciones.sinConsentimiento,
     pedirConsentimientoAlConductor: Boolean(opciones.sinConsentimiento),
@@ -350,7 +384,7 @@ function responder(estado: Estado, metodo: string, ruta: string, consulta: URLSe
     }
   }
   if (clave === 'GET /tiempo-real/colectivos') {
-    return { estado: 200, cuerpo: colectivos(consulta.get('sentido_id') ?? IDA, consulta.has('latitud')) };
+    return { estado: 200, cuerpo: estado.sinColectivos ? [] : colectivos(consulta.get('sentido_id') ?? IDA, consulta.has('latitud')) };
   }
   if (clave === 'POST /usuarios/yo/consentimientos/geolocalizacion') {
     estado.consentimiento = true;
@@ -367,6 +401,7 @@ function responder(estado: Estado, metodo: string, ruta: string, consulta: URLSe
 
   // Catalogo oficial de recorridos
   if (clave === 'GET /catalogo/comunas') return { estado: 200, cuerpo: CATALOGO.comunas };
+  if (clave === 'GET /catalogo/mapa') return lineasEnRecuadro(consulta);
   if (clave === 'GET /catalogo/lineas') {
     return { estado: 200, cuerpo: buscarEnCatalogo(consulta.get('buscar') ?? '', consulta.get('comuna') ?? '') };
   }
