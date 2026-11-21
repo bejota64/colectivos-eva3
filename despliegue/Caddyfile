@@ -1,0 +1,67 @@
+# Caddy: puerta de entrada del servidor.
+# Con un dominio real obtiene y renueva solo el certificado HTTPS (Let's
+# Encrypt) y redirige HTTP a HTTPS. Con DOMINIO=localhost usa un certificado
+# local, que es lo que hacen las pruebas automaticas.
+#
+# Entrega tres apps web separadas (compiladas en la imagen, ver web/Dockerfile):
+#   /            app del pasajero
+#   /conductor/  app del conductor
+#   /panel/      panel del representante y del administrador (fuera de buscadores)
+# Que alguien abra /panel/ no le da acceso a nada: cada ruta de la API exige
+# sesion y rol (SesionGuard y RolesGuard), y eso es lo que protege los datos.
+
+{$DOMINIO} {
+	encode zstd gzip
+
+	# La API: todo lo que empieza con /api. Caddy agrega X-Forwarded-For y
+	# la API confia en un salto de proxy para leer la IP real del cliente.
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	redir /conductor /conductor/ 308
+	redir /panel /panel/ 308
+
+	# Cada app resuelve sus propias rutas en el navegador: una ruta que no es
+	# un archivo vuelve al index.html de esa app.
+	handle /conductor/* {
+		root * /srv/web
+		try_files {path} /conductor/index.html
+		file_server
+	}
+
+	handle /panel/* {
+		root * /srv/web
+		header X-Robots-Tag "noindex, nofollow"
+		try_files {path} /panel/index.html
+		file_server
+	}
+
+	handle {
+		root * /srv/web
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Los archivos de /assets llevan un resumen de su contenido en el nombre:
+	# nunca cambian, se pueden guardar un ano. El resto (index.html y
+	# manifiestos) se revalida en cada visita para recibir las versiones nuevas.
+	@inmutables path /assets/*
+	header @inmutables Cache-Control "public, max-age=31536000, immutable"
+	@revalidar not path /assets/* /api/*
+	header @revalidar Cache-Control "no-cache"
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Solo codigo y estilos del propio sitio: sin scripts en linea ni de
+		# terceros. La unica excepcion son las teselas del mapa de OpenStreetMap.
+		# Debe coincidir con web/politica-contenido.ts (lo revisa web/test/csp.test.ts).
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		# La ubicacion solo la puede pedir este sitio; camara y microfono, nadie.
+		Permissions-Policy "geolocation=(self), camera=(), microphone=(), payment=(), usb=()"
+		-Server
+	}
+}
