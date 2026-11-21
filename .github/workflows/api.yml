@@ -113,6 +113,10 @@ jobs:
         working-directory: api
         run: npm run test:cov -- --ci
 
+      - name: Pruebas del simulador de la demostracion
+        if: ${{ !cancelled() }}
+        run: node --test pruebas/simulador/simulador.test.mjs
+
       - name: Pruebas de integracion contra las bases reales
         if: ${{ !cancelled() && steps.compilar.outcome == 'success' }}
         working-directory: api

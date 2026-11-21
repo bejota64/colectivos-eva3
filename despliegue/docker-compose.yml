@@ -86,7 +86,9 @@ services:
       URL_POSTGRES: postgresql://${POSTGRES_API_USUARIO}:${POSTGRES_API_CONTRASENA}@postgres:5432/colectivos
       URL_MONGO: mongodb://${MONGO_API_USUARIO}:${MONGO_API_CONTRASENA}@mongo:27017/colectivos?authSource=colectivos
       SECRETO_JWT: ${SECRETO_JWT:?Falta SECRETO_JWT en .env}
-      LIMITE_GENERAL_POR_MINUTO: 100
+      # 100 peticiones por minuto por IP. Solo se sube durante una prueba de
+      # carga (pruebas/README.md) y se vuelve a 100 al terminar.
+      LIMITE_GENERAL_POR_MINUTO: ${LIMITE_GENERAL_POR_MINUTO:-100}
       TZ: America/Santiago
     depends_on:
       postgres:
@@ -110,6 +112,38 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - datos_caddy:/data
       - config_caddy:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *registros
+
+  # Solo para demostraciones: mueve colectivos de prueba por el recorrido
+  # (posiciones GPS y asientos simulados). No parte con "docker compose up":
+  # se pide con --profile demo. Ver pruebas/simulador/README.md.
+  simulador:
+    profiles: [demo]
+    image: node:24-slim
+    restart: "no"
+    init: true
+    user: node
+    working_dir: /simulador
+    command: ["node", "simular-colectivos.mjs"]
+    # Al detenerlo cierra las jornadas y desactiva sus autos: le da tiempo.
+    stop_grace_period: 30s
+    volumes:
+      - ../pruebas/simulador:/simulador:ro
+    environment:
+      # Habla con la API por la red interna de Docker: no pasa por Caddy ni
+      # gasta el limite de peticiones por IP de quien presenta.
+      BASE_URL: http://api:3000
+      CLAVE_DEMO: ${CLAVE_DEMO:-}
+      TRAZADO: ${SIMULADOR_TRAZADO:-9001}
+      # Usa autos SIMU01.. y conductores sim<codigo>-N@ propios, que crea con
+      # este representante; las cuentas de la demo quedan libres.
+      REPRESENTANTE: ${SIMULADOR_REPRESENTANTE:-representante@colectivos.ejemplo.cl}
+      AUTOS: ${SIMULADOR_AUTOS:-3}
+      DURACION_MIN: ${SIMULADOR_DURACION_MIN:-240}
+      TZ: America/Santiago
     depends_on:
       api:
         condition: service_healthy
