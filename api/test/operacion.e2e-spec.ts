@@ -137,6 +137,16 @@ describe('Operacion: jornada, mapa, "me subi", calificacion y panel', () => {
       expect(r.status).toBe(422);
     });
 
+    it('rechaza un salto de 483 m aunque llegue en menos de 1 s (pentest PT-NEG-02)', async () => {
+      // Inicio del recorrido (la Plaza): 483 m antes del PUNTO_2 recien enviado.
+      const r = await request(servidor)
+        .post('/api/tiempo-real/posiciones')
+        .set('Authorization', `Bearer ${tokenConductor}`)
+        .send({ latitud: -33.6105, longitud: -70.5757 });
+      expect(r.status).toBe(422);
+      expect(JSON.stringify(r.body)).toContain('no es coherente');
+    });
+
     it('rechaza coordenadas fuera de Chile en la validacion de entrada (400)', async () => {
       const r = await request(servidor)
         .post('/api/tiempo-real/posiciones')

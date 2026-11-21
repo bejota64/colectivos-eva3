@@ -61,12 +61,21 @@ describe('velocidadEntre', () => {
     expect(v ?? 0).toBeGreaterThan(150);
   });
 
-  it('con menos de 1 s entre muestras no calcula', () => {
+  it('con menos de 1 s entre muestras calcula como si fuera 1 s: un salto igual se detecta', () => {
+    // Antes devolvia null y dos envios seguidos se saltaban el control (pentest PT-NEG-02).
+    const v = velocidadEntre(
+      { coordenada: a, en: new Date(0) },
+      { coordenada: b, en: new Date(500) },
+    );
+    expect(v).toBeGreaterThan(1_000);
+  });
+
+  it('dos envios casi simultaneos desde el mismo lugar no son un salto', () => {
     expect(
       velocidadEntre(
         { coordenada: a, en: new Date(0) },
-        { coordenada: b, en: new Date(500) },
+        { coordenada: a, en: new Date(10) },
       ),
-    ).toBeNull();
+    ).toBe(0);
   });
 });

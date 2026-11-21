@@ -77,14 +77,23 @@ export interface Muestra {
   en: Date;
 }
 
+/** Intervalo minimo con que se calcula la velocidad (ver velocidadEntre). */
+export const SEGUNDOS_MINIMOS_VELOCIDAD = 1;
+
 /**
- * Velocidad calculada entre dos posiciones, en km/h. Devuelve null si
- * pasaron menos de 1 s (el calculo no seria confiable).
+ * Velocidad calculada entre dos posiciones, en km/h.
+ *
+ * Si pasaron menos de 1 s se calcula como si hubiera pasado 1 s. Antes se
+ * devolvia null y el control de «salto imposible» no se aplicaba: enviando
+ * dos posiciones seguidas en menos de 1 s, la segunda podia estar en
+ * cualquier punto del recorrido (hallazgo del pentest PT-NEG-02, 21-11-2026).
+ * La app manda una posicion cada 5 s, asi que el piso no afecta al uso real:
+ * solo sobrestima la velocidad de envios anormalmente seguidos.
  */
-export function velocidadEntre(anterior: Muestra, actual: Muestra): number | null {
-  const segundos = (actual.en.getTime() - anterior.en.getTime()) / 1000;
-  if (segundos < 1) {
-    return null;
-  }
+export function velocidadEntre(anterior: Muestra, actual: Muestra): number {
+  const segundos = Math.max(
+    SEGUNDOS_MINIMOS_VELOCIDAD,
+    (actual.en.getTime() - anterior.en.getTime()) / 1000,
+  );
   return (distanciaMetros(anterior.coordenada, actual.coordenada) / segundos) * 3.6;
 }
