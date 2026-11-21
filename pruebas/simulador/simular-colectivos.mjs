@@ -100,6 +100,21 @@ export function acotar(asientos, capacidad) {
   return Math.min(Math.max(asientos, 0), capacidad);
 }
 
+/**
+ * Donde parte el auto numero `indice` de `cantidad`: repartidos parejo en la
+ * vuelta completa (ida y luego vuelta), para que siempre haya autos en los
+ * dos sentidos. `largos` son los metros de cada sentido, en orden.
+ */
+export function ubicacionInicial(indice, cantidad, largos) {
+  const total = largos.reduce((suma, l) => suma + l, 0);
+  let metros = (total * indice) / cantidad;
+  for (const [sentido, l] of largos.entries()) {
+    if (metros < l) return { sentido, metros };
+    metros -= l;
+  }
+  return { sentido: 0, metros: 0 };
+}
+
 /** Patente de un auto del simulador: SIMU01..SIMU99 (formato BBBB12 valido). */
 export function patenteSimulada(numero) {
   return `SIMU${String(numero).padStart(2, '0')}`;
@@ -276,8 +291,10 @@ export async function simular({
 
   // 3. Sesion de cada conductor simulado, consentimiento de ubicacion y jornada en SU auto.
   const colectivos = [];
+  const largos = sentidos.map((s) => largo(s.recorrido));
   for (const [i, f] of flota.entries()) {
     const c = { correo: f.correo, token: null };
+    const inicio = ubicacionInicial(i, flota.length, largos);
     try {
       c.token = await cliente.iniciarSesion(f.correo);
     } catch (error) {
@@ -294,7 +311,7 @@ export async function simular({
       const libres = await cliente.pedir(c, 'GET', '/flota/vehiculos-disponibles');
       const auto = Array.isArray(libres.datos) ? libres.datos.find((v) => v.patente === f.vehiculo.patente) : null;
       if (!auto) throw new Error(`${f.vehiculo.patente} no esta libre: otra cuenta tiene una jornada abierta con el`);
-      jornada = await cliente.pedir(c, 'POST', '/jornadas', { vehiculo_id: auto.id, sentido_id: sentidos[0].id });
+      jornada = await cliente.pedir(c, 'POST', '/jornadas', { vehiculo_id: auto.id, sentido_id: sentidos[inicio.sentido].id });
       if (jornada.estado !== 201 && jornada.estado !== 200) {
         throw new Error(`${f.correo}: no se pudo abrir jornada (${jornada.estado} ${JSON.stringify(jornada.datos)})`);
       }
@@ -302,12 +319,12 @@ export async function simular({
     c.patente = jornada.datos.patente;
     c.capacidad = jornada.datos.capacidad;
     c.asientos = jornada.datos.asientos_disponibles;
-    c.sentido = Math.max(0, sentidos.findIndex((s) => s.id === jornada.datos.sentido_id));
+    // Repartidos en ida y vuelta: si la jornada venia de antes en otro sentido, se cambia.
+    c.sentido = inicio.sentido;
     if (sentidos[c.sentido].id !== jornada.datos.sentido_id) {
       await cliente.pedir(c, 'PATCH', '/jornadas/actual/sentido', { sentido_id: sentidos[c.sentido].id });
     }
-    // Reparte los autos a lo largo del recorrido.
-    c.metros = (largo(sentidos[c.sentido].recorrido) * i) / flota.length;
+    c.metros = inicio.metros;
     c.detenidoHasta = 0;
     c.darVuelta = false;
     c.subenAlPartir = 0;

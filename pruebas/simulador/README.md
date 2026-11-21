@@ -87,17 +87,21 @@ Autos SIMU01, SIMU02, SIMU03 y sus conductores quedan desactivados hasta la prox
 La app del pasajero usa la ubicación del teléfono, y la API solo acepta un
 aviso de espera («Estoy esperando») a menos de 200 m del recorrido. Desde
 la sala de clases eso no se cumple, así que la ubicación del pasajero
-también se simula, con Chrome en el computador que se proyecta:
+también se simula. Las cuentas de la demo (`@colectivos.ejemplo.cl`) tienen
+la opción en la misma app, en cualquier navegador o celular:
 
-1. Abrir el sitio e iniciar sesión como pasajero.
-2. `F12` → menú `⋮` de las herramientas → **More tools** → **Sensors**.
-3. En **Location**, elegir **Other…** y escribir latitud `-33.5931` y
-   longitud `-70.5790` (un punto del recorrido del 9001, a 2 km de la plaza).
-4. Recargar la página y permitir la ubicación.
-5. Opcional: `Ctrl+Shift+M` para verla con tamaño de celular.
+1. Iniciar sesión como pasajero (por ejemplo `pasajero1`).
+2. Menú (las iniciales, arriba a la derecha) → **Simular mi ubicación
+   (demostración)**. Deja a la persona en la mitad del recorrido del sentido
+   elegido, y el mapa muestra «Ubicación simulada (demostración)» mientras
+   está activa. La **X** de ese aviso vuelve a la ubicación real.
 
-Con 3 autos repartidos en el recorrido, el próximo pasa por ese punto en
-pocos minutos.
+Otra forma, solo en Chrome: `F12` → menú `⋮` → **More tools** → **Sensors** →
+**Location** → **Other…**, latitud `-33.5931` y longitud `-70.5790`.
+
+Los 3 autos parten repartidos en la vuelta completa (dos de ida y uno de
+vuelta), así que siempre hay colectivos en los dos sentidos y el próximo pasa
+por la mitad del recorrido en pocos minutos.
 
 ## Guion para la defensa (unos 4 minutos)
 
@@ -144,7 +148,7 @@ computador las peticiones salen con la IP de esa casa, que la API limita a
 node --test pruebas/simulador/simulador.test.mjs
 ```
 
-Prueban los cálculos (interpolación del recorrido, velocidad bajo el máximo
+Prueban los cálculos (reparto en ida y vuelta, interpolación del recorrido, velocidad bajo el máximo
 de la API, cuándo detenerse por un aviso, patentes y correos propios). En
 GitHub corren con cada pull request, y el flujo de despliegue además ejecuta
 el simulador 30 segundos contra el sistema completo y comprueba que crea sus
