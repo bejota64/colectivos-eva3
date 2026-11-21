@@ -1,0 +1,65 @@
+# Integracion continua de las tres apps web (parte de Martin Garcia):
+# analisis estatico con reglas de React y accesibilidad, compilacion,
+# pruebas unitarias y pruebas en un navegador real contra una API simulada.
+
+name: Web
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web (lint, unitarias y navegador)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v5
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Analisis estatico (oxlint, con reglas de React y accesibilidad)
+        run: npm run lint
+
+      - name: Compilar las tres apps (TypeScript estricto y Vite)
+        run: npm run build
+
+      - name: Pruebas unitarias (Vitest)
+        run: npm test
+
+      - name: Instalar el navegador de pruebas
+        run: npx playwright install --with-deps chromium
+
+      # Pasajero y conductor en un celular simulado, el panel en escritorio,
+      # con la API simulada y la misma politica de seguridad que produccion.
+      - name: Pruebas en el navegador (Playwright)
+        run: npm run test:e2e
+
+      - name: Dependencias sin vulnerabilidades moderadas o mayores
+        run: npm audit --audit-level=moderate
+
+      - name: Resultados de Playwright si algo fallo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-playwright
+          path: web/test-results/
+          retention-days: 7
