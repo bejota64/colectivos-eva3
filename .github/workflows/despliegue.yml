@@ -100,6 +100,24 @@ jobs:
           test "$(inicio 'Clave.Prueba.2026')" = "401"
           test "$(inicio "$NUEVA")" = "200"
           echo "La contrasena del repositorio ya no entra; la nueva si"
+          # La usa el paso del simulador (queda enmascarada en los registros).
+          echo "CLAVE_DEMO=$NUEVA" >> "$GITHUB_ENV"
+
+      # El simulador de la demostracion crea sus propios autos (SIMU01..) y
+      # conductores, mueve los colectivos por el recorrido y al terminar los
+      # deja desactivados: las cuentas de la demo no se tocan.
+      - name: El simulador de la demo usa autos y cuentas propias y los desactiva al terminar
+        run: |
+          SIMULADOR_DURACION_MIN=0.5 docker compose --profile demo run --rm -T simulador | tee simulador.txt
+          grep -q 'Crea el auto SIMU01 del simulador' simulador.txt
+          grep -q 'SIMU03 (sim9001-3@colectivos.ejemplo.cl) parte' simulador.txt
+          grep -q 'quedan desactivados hasta la proxima simulacion' simulador.txt
+          if grep -q 'rechaza' simulador.txt; then echo "La API rechazo posiciones del simulador"; exit 1; fi
+          set -a; . ./.env; set +a
+          activos=$(docker compose exec -T postgres psql -U "$POSTGRES_USUARIO" -d colectivos -tAc \
+            "SELECT count(*) FROM vehiculos WHERE patente LIKE 'SIMU%' AND activo")
+          test "$activos" = "0"
+          echo "El simulador corrio con sus propios autos y los dejo desactivados"
 
       - name: Respaldo de PostgreSQL y MongoDB
         run: |

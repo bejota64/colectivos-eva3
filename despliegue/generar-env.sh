@@ -13,7 +13,7 @@ fi
 
 DOMINIO="${1:-}"
 if [ -z "$DOMINIO" ]; then
-  read -rp "Dominio del servidor (por ejemplo colectivos-inacap.eastus.cloudapp.azure.com): " DOMINIO
+  read -rp "Dominio del servidor (por ejemplo colectivos-inacap.chilecentral.cloudapp.azure.com): " DOMINIO
 fi
 if ! [[ "$DOMINIO" =~ ^[a-z0-9.-]+$ ]]; then
   echo "Dominio invalido: usa solo minusculas, numeros, puntos y guiones."

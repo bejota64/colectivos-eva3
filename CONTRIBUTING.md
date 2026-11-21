@@ -4,7 +4,7 @@
 
 | Integrante | Carpetas | Rama |
 |---|---|---|
-| Benjamín Muñoz (seguridad, API, bases de datos, despliegue) | `api/`, `bd/`, `herramientas/`, `despliegue/` y archivos de la raíz | `benjamin-munoz/<tema>`, por ejemplo `benjamin-munoz/api-y-bases` |
+| Benjamín Muñoz (seguridad, API, bases de datos, despliegue) | `api/`, `bd/`, `herramientas/`, `despliegue/`, `pruebas/` y archivos de la raíz | `benjamin-munoz/<tema>`, por ejemplo `benjamin-munoz/api-y-bases` |
 | Martín García (interfaz web) | `web/` | `martin-garcia/<tema>`, por ejemplo `martin-garcia/web` |
 | Benjamín Cuevas (Scrum Master) | No sube código: **revisa y aprueba todos los pull requests** | — |
 
