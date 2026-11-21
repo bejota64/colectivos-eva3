@@ -1,0 +1,111 @@
+# Levanta el despliegue de produccion completo (Caddy con la web, API y
+# bases) tal como corre en el servidor y lo prueba desde afuera por HTTPS
+# (parte de Benjamin Munoz: seguridad y despliegue). Necesita que la API
+# y la web ya esten en main.
+
+name: Despliegue
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  despliegue:
+    name: Despliegue de produccion (Docker y HTTPS)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: despliegue
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v5
+
+      # Mismo script que se usa en el servidor, con un dominio local.
+      - name: Generar la configuracion con secretos aleatorios
+        run: bash generar-env.sh localhost
+
+      - name: Construir las imagenes (API y web) y levantar los cuatro servicios
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: La API responde por HTTPS a traves de Caddy
+        run: |
+          curl -fsSk --retry 10 --retry-delay 3 --retry-all-errors https://localhost/api/salud | tee salud.json
+          grep -q '"estado":"ok"' salud.json
+
+      - name: HTTP redirige a HTTPS
+        run: |
+          CODIGO=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/)
+          echo "HTTP responde $CODIGO"
+          [[ "$CODIGO" =~ ^30[178]$ ]]
+
+      - name: Las tres apps web se entregan con sus cabeceras de seguridad
+        run: |
+          # Cada app responde en su ruta, tambien al recargar una ruta interna.
+          curl -fsSk https://localhost/ | grep -q '<title>Colectivos</title>'
+          curl -fsSk https://localhost/viajes | grep -q '<title>Colectivos</title>'
+          curl -fsSk https://localhost/conductor/ | grep -q '<title>Colectivos Conductor</title>'
+          curl -fsSk https://localhost/panel/reportes | grep -q '<title>Colectivos Panel</title>'
+          # El panel queda fuera de los buscadores.
+          curl -fsSkI https://localhost/panel/ | grep -qi '^x-robots-tag: noindex'
+          # Politica de seguridad de contenido y permisos del navegador.
+          curl -fsSkI https://localhost/ | tee cabeceras.txt
+          grep -qi "^content-security-policy: default-src 'self'; script-src 'self';" cabeceras.txt
+          grep -qi '^permissions-policy: geolocation=(self)' cabeceras.txt
+          grep -qi '^x-frame-options: deny' cabeceras.txt
+          # Que la web sea publica no abre la API: sin sesion responde 401.
+          test "$(curl -sk -o /dev/null -w '%{http_code}' https://localhost/api/usuarios/yo)" = "401"
+
+      - name: Las bases de datos no quedan expuestas fuera de Docker
+        run: |
+          for puerto in 5432 27017; do
+            if nc -z -w 2 127.0.0.1 "$puerto"; then
+              echo "El puerto $puerto quedo abierto y no deberia"
+              exit 1
+            fi
+          done
+          echo "PostgreSQL y MongoDB no aceptan conexiones desde fuera de Docker"
+
+      # La API del servidor entra con cuentas sin privilegios de
+      # administracion: no puede borrar tablas ni vaciar la auditoria.
+      - name: Las cuentas de la API no pueden borrar tablas ni la auditoria
+        run: |
+          set -a; . ./.env; set +a
+          docker compose exec -T -e PGPASSWORD="$POSTGRES_API_CONTRASENA" postgres \
+            psql -h 127.0.0.1 -U "$POSTGRES_API_USUARIO" -d colectivos -c 'DROP TABLE usuarios' > pg.txt 2>&1 || true
+          cat pg.txt
+          grep -Eq "must be owner|permission denied" pg.txt
+          docker compose exec -T mongo mongosh --quiet -u "$MONGO_API_USUARIO" -p "$MONGO_API_CONTRASENA" \
+            --authenticationDatabase colectivos colectivos --eval 'db.registro_eventos.deleteMany({})' > mg.txt 2>&1 || true
+          cat mg.txt
+          grep -qi "not authorized" mg.txt
+          echo "PostgreSQL y MongoDB rechazan las operaciones de administracion a la cuenta de la API"
+
+      - name: La contrasena publicada de las cuentas de demostracion deja de servir
+        run: |
+          NUEVA=$(openssl rand -hex 16)
+          echo "::add-mask::$NUEVA"
+          CLAVE_DEMO="$NUEVA" bash cambiar-clave-demo.sh
+          inicio() {
+            curl -sk -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+              -d "{\"correo_electronico\":\"pasajero1@colectivos.ejemplo.cl\",\"contrasena\":\"$1\"}" \
+              https://localhost/api/autenticacion/inicio-sesion
+          }
+          test "$(inicio 'Clave.Prueba.2026')" = "401"
+          test "$(inicio "$NUEVA")" = "200"
+          echo "La contrasena del repositorio ya no entra; la nueva si"
+
+      - name: Respaldo de PostgreSQL y MongoDB
+        run: |
+          bash respaldar.sh
+          for archivo in respaldos/*; do test -s "$archivo"; done
+
+      - name: Registros de los servicios si algo fallo
+        if: failure()
+        run: docker compose logs --no-color --tail=200
