@@ -167,4 +167,88 @@ describe('Catalogo de recorridos reales (RNTPP)', () => {
     expect(puntos[0]?.distancia_acumulada_m).toBe(0);
     expect(puntos.at(-1)?.distancia_acumulada_m).toBeGreaterThan(1000);
   });
+
+  describe('lineas en el mapa principal (GET /api/catalogo/mapa)', () => {
+    // Lo que ve un celular alrededor de la Plaza de Puente Alto, con margen.
+    const PLAZA = { sur: -33.625, oeste: -70.595, norte: -33.585, este: -70.555 };
+
+    interface LineaMapa extends Resumen {
+      tramos: { sentido: 'ida' | 'vuelta'; puntos: [number, number][] }[];
+    }
+
+    it('exige sesion', async () => {
+      await request(servidor).get('/api/catalogo/mapa').query(PLAZA).expect(401);
+    });
+
+    it('rechaza recuadros invertidos, fuera de Chile o de toda la ciudad', async () => {
+      await request(servidor).get('/api/catalogo/mapa').set(conToken()).expect(400);
+      await request(servidor)
+        .get('/api/catalogo/mapa')
+        .query({ ...PLAZA, sur: PLAZA.norte, norte: PLAZA.sur })
+        .set(conToken())
+        .expect(400);
+      await request(servidor)
+        .get('/api/catalogo/mapa')
+        .query({ sur: 48.8, oeste: 2.3, norte: 48.9, este: 2.4 })
+        .set(conToken())
+        .expect(400);
+      const r = await request(servidor)
+        .get('/api/catalogo/mapa')
+        .query({ sur: -33.7, oeste: -70.9, norte: -33.3, este: -70.4 })
+        .set(conToken())
+        .expect(400);
+      expect(JSON.stringify(r.body)).toContain('Acerca el mapa');
+    });
+
+    it('en la Plaza de Puente Alto dibuja las lineas que pasan, recortadas a la zona', async () => {
+      const r = await request(servidor).get('/api/catalogo/mapa').query(PLAZA).set(conToken()).expect(200);
+      const { lineas, recortado } = r.body as { lineas: LineaMapa[]; recortado: boolean };
+      expect(recortado).toBe(false);
+      expect(lineas.length).toBeGreaterThan(10);
+      for (const linea of lineas) {
+        expect(linea.desde).toBeTruthy();
+        expect(linea.hasta).toBeTruthy();
+        expect(linea.tramos.length).toBeGreaterThan(0);
+        for (const tramo of linea.tramos) {
+          expect(['ida', 'vuelta']).toContain(tramo.sentido);
+          expect(tramo.puntos.length).toBeGreaterThanOrEqual(2);
+          // Solo la zona pedida, con 200 m de margen (~0,0025 grados).
+          for (const [latitud, longitud] of tramo.puntos) {
+            expect(latitud).toBeGreaterThan(PLAZA.sur - 0.0025);
+            expect(latitud).toBeLessThan(PLAZA.norte + 0.0025);
+            expect(longitud).toBeGreaterThan(PLAZA.oeste - 0.003);
+            expect(longitud).toBeLessThan(PLAZA.este + 0.003);
+          }
+        }
+      }
+      // Pesa poco aunque pasen muchas lineas: va simplificado y redondeado.
+      expect(r.text.length).toBeLessThan(250_000);
+    });
+
+    it('incluye las lineas que «cercanas» encuentra en la plaza', async () => {
+      const [mapa, cerca] = await Promise.all([
+        request(servidor).get('/api/catalogo/mapa').query(PLAZA).set(conToken()).expect(200),
+        request(servidor)
+          .get('/api/catalogo/lineas/cercanas')
+          .query({ latitud: -33.6105, longitud: -70.5757, radio_m: 300 })
+          .set(conToken())
+          .expect(200),
+      ]);
+      const enMapa = new Set((mapa.body as { lineas: LineaMapa[] }).lineas.map((l) => l.id));
+      const cercanas = (cerca.body as Resumen[]).map((l) => l.id);
+      expect(cercanas.length).toBeGreaterThan(0);
+      expect(cercanas.every((id) => enMapa.has(id))).toBe(true);
+    });
+
+    it('solo entrega el recorrido, nunca datos de personas del registro original', async () => {
+      const r = await request(servidor).get('/api/catalogo/mapa').query(PLAZA).set(conToken()).expect(200);
+      const permitidos = [
+        'id', 'nombre', 'numero_linea', 'empresa', 'tipo_servicio', 'variante', 'alternativo',
+        'circular', 'desde', 'hasta', 'comunas', 'tiene_trazado', 'tramos',
+      ];
+      for (const linea of (r.body as { lineas: Record<string, unknown>[] }).lineas) {
+        expect(Object.keys(linea).every((clave) => permitidos.includes(clave))).toBe(true);
+      }
+    });
+  });
 });

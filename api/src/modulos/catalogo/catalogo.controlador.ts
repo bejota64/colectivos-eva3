@@ -1,7 +1,7 @@
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { Autenticado } from '../../comun/decoradores/autenticado.decorador';
 import { CatalogoServicio } from './catalogo.servicio';
-import { BuscarLineasDto, LineasCercanasDto } from './dto/catalogo.dto';
+import { BuscarLineasDto, LineasCercanasDto, RecuadroMapaDto } from './dto/catalogo.dto';
 
 /**
  * Catalogo oficial de recorridos de colectivos (RNTPP). Solo lectura y para
@@ -24,6 +24,13 @@ export class CatalogoControlador {
   @Get('lineas/cercanas')
   cercanas(@Query() consulta: LineasCercanasDto) {
     return this.catalogo.cercanas(consulta.latitud, consulta.longitud, consulta.radio_m);
+  }
+
+  /** Lineas dibujadas en el mapa principal: las que pasan por el recuadro visible, recortadas a el. */
+  @Autenticado()
+  @Get('mapa')
+  mapa(@Query() recuadro: RecuadroMapaDto) {
+    return this.catalogo.mapa(recuadro);
   }
 
   /** Detalle: calles en orden y la linea dibujada de cada sentido. */

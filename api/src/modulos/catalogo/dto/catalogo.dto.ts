@@ -47,3 +47,33 @@ export class LineasCercanasDto {
   @Max(1000)
   radio_m?: number;
 }
+
+/**
+ * ?sur&oeste&norte&este: el recuadro visible del mapa, dentro de Chile. Que
+ * no sea demasiado grande lo revisa el servicio (acerca el mapa).
+ */
+export class RecuadroMapaDto {
+  @Type(() => Number)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-56.5)
+  @Max(-17.0)
+  sur!: number;
+
+  @Type(() => Number)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-76.0)
+  @Max(-66.0)
+  oeste!: number;
+
+  @Type(() => Number)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-56.5)
+  @Max(-17.0)
+  norte!: number;
+
+  @Type(() => Number)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-76.0)
+  @Max(-66.0)
+  este!: number;
+}
